@@ -17,11 +17,11 @@ def decodeManchester(signal):
     return decoded
 
 
-def decodenBipolar(signal):
+def decodeBipolar(signal):
     decoded = []
-    for bit in signal:
-        if bit == 0:
+    for level in signal:
+        if level == 0:
             decoded.append(0)
-        else:
+        elif level in (1, -1):
             decoded.append(1)
     return decoded

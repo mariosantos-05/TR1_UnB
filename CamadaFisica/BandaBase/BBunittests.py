@@ -1,6 +1,6 @@
 import unittest
 from ModuBandaBase import encode_NRZ, encode_Manchester, encode_Bipolar
-from DemoBandaBase import decodenNRZ, decodeManchester, decodenBipolar
+from DemoBandaBase import decodenNRZ, decodeManchester, decodeBipolar
 
 # Unit test
 class TestEncodeNRZ(unittest.TestCase):
@@ -112,20 +112,20 @@ class TestDecodeManchester(unittest.TestCase):
 
 class TestDecodeBipolar(unittest.TestCase):
     def test_all_zeros(self):
-        self.assertEqual(decodenBipolar([0, 0, 0]), [0, 0, 0])
+        self.assertEqual(decodeBipolar([0, 0, 0]), [0, 0, 0])
 
     def test_alternating_levels(self):
         # both +1 and -1 should decode as 1
-        self.assertEqual(decodenBipolar([1, 0, -1, 0, 1]), [1, 0, 1, 0, 1])
+        self.assertEqual(decodeBipolar([1, 0, -1, 0, 1]), [1, 0, 1, 0, 1])
 
     def test_all_ones_levels(self):
-        self.assertEqual(decodenBipolar([1, 1, 1]), [1, 1, 1])
+        self.assertEqual(decodeBipolar([1, 1, 1]), [1, 1, 1])
 
     def test_all_negative_levels(self):
-        self.assertEqual(decodenBipolar([-1, -1, -1]), [1, 1, 1])
+        self.assertEqual(decodeBipolar([-1, -1, -1]), [1, 1, 1])
 
     def test_empty_signal(self):
-        self.assertEqual(decodenBipolar([]), [])
+        self.assertEqual(decodeBipolar([]), [])
 
 
 if __name__ == "__main__":
