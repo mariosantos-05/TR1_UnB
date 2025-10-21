@@ -1,7 +1,7 @@
 import unittest
-from BandaBase import encode_NRZ
-from BandaBase import encode_Manchester
-from BandaBase import encode_Bipolar
+from ModuBandaBase import encode_NRZ, encode_Manchester, encode_Bipolar
+from DemoBandaBase import decodenNRZ, decodeManchester, decodenBipolar
+
 # Unit test
 class TestEncodeNRZ(unittest.TestCase):
     def test_basic(self):
@@ -48,7 +48,6 @@ class TestEncodeManchester(unittest.TestCase):
         # nenhuma entrada -> lista vazia
         self.assertEqual(encode_Manchester(""), [])
 
-
 class TestEncodeBipolar(unittest.TestCase):
     def test_all_zeros(self):
         """Todos os bits 0 devem gerar apenas níveis 0.0"""
@@ -80,8 +79,53 @@ class TestEncodeBipolar(unittest.TestCase):
         """Entrada vazia deve retornar lista vazia"""
         self.assertEqual(encode_Bipolar(""), [])
 
+class TestDecodeNRZ(unittest.TestCase):
+    def test_all_zeros(self):
+        self.assertEqual(decodenNRZ([0, 0, 0]), [0, 0, 0])
 
+    def test_all_ones(self):
+        self.assertEqual(decodenNRZ([1, 1, 1]), [1, 1, 1])
 
+    def test_mixed_signal(self):
+        self.assertEqual(decodenNRZ([1, 0, 1, 0]), [1, 0, 1, 0])
+
+    def test_empty_signal(self):
+        self.assertEqual(decodenNRZ([]), [])
+
+class TestDecodeManchester(unittest.TestCase):
+    def test_single_one(self):
+        self.assertEqual(decodeManchester([1, -1]), [1])
+
+    def test_single_zero(self):
+        self.assertEqual(decodeManchester([-1, 1]), [0])
+
+    def test_multiple_bits(self):
+        signal = [1, -1, -1, 1, 1, -1]  # represents 1, 0, 1
+        self.assertEqual(decodeManchester(signal), [1, 0, 1])
+
+    def test_invalid_pattern_ignored(self):
+        # If pattern does not match 1→-1 or -1→1, nothing should be decoded
+        self.assertEqual(decodeManchester([1, 1, -1, -1]), [])
+
+    def test_empty_signal(self):
+        self.assertEqual(decodeManchester([]), [])
+
+class TestDecodeBipolar(unittest.TestCase):
+    def test_all_zeros(self):
+        self.assertEqual(decodenBipolar([0, 0, 0]), [0, 0, 0])
+
+    def test_alternating_levels(self):
+        # both +1 and -1 should decode as 1
+        self.assertEqual(decodenBipolar([1, 0, -1, 0, 1]), [1, 0, 1, 0, 1])
+
+    def test_all_ones_levels(self):
+        self.assertEqual(decodenBipolar([1, 1, 1]), [1, 1, 1])
+
+    def test_all_negative_levels(self):
+        self.assertEqual(decodenBipolar([-1, -1, -1]), [1, 1, 1])
+
+    def test_empty_signal(self):
+        self.assertEqual(decodenBipolar([]), [])
 
 
 if __name__ == "__main__":
