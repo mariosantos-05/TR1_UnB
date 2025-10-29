@@ -2,7 +2,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 def encode_ASK(bits: list[float], freq=8, sample_rate= 100) -> list[float]:
     t_bit = 1 / freq  # Duração de cada bit
     t = np.linspace(0, t_bit, sample_rate, endpoint=False)  # Vetor de tempo para um bit
@@ -43,3 +42,26 @@ def encode_PSK(bits: list[float], A=1.0, freq=8, sample_rate=100) -> list[float]
         signal.extend(carrier)
     
     return signal
+
+def encode_16QAM(bits: list[int], A=1.0, freq=8, sample_rate=100) -> list[float]:
+    bit_duration = 1  # each symbol lasts 1 second
+    t_bit = np.linspace(0, bit_duration, sample_rate, endpoint=False)
+    signal = []
+    
+    # Mapping for 16-QAM (Gray coding)
+    mapping = {
+        0: (-3, -3), 1: (-3, -1), 2: (-3, 3), 3: (-3, 1),
+        4: (-1, -3), 5: (-1, -1), 6: (-1, 3), 7: (-1, 1),
+        8: (3, -3), 9: (3, -1), 10: (3, 3), 11: (3, 1),
+        12: (1, -3), 13: (1, -1), 14: (1, 3), 15: (1, 1)
+    }
+    
+    for symbol in bits:
+        I, Q = mapping[symbol]
+        carrier_I = A * I * np.sin(2 * np.pi * freq * t_bit)
+        carrier_Q = A * Q * np.cos(2 * np.pi * freq * t_bit)
+        combined_signal = carrier_I + carrier_Q
+        signal.extend(combined_signal)
+    
+    return signal
+

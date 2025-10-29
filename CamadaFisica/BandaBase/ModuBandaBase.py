@@ -7,7 +7,6 @@ def encode_NRZ(bits : str) -> list[float]:
             nrz_signal.append(-1.0)  # Representa nível baixo
     return nrz_signal
 
-
 def encode_Manchester(bits : str) -> list[float]:
     manchester_signal = []
     for bit in bits:
@@ -16,7 +15,6 @@ def encode_Manchester(bits : str) -> list[float]:
         else:
             manchester_signal.extend([-1.0, 1.0])  # Transição de baixo para alto
     return manchester_signal   
-
 
 def encode_Bipolar(bits : str) -> list[float]:
     bipolar_ami_signal = []
