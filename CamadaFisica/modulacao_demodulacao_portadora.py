@@ -14,7 +14,7 @@ import math
 #remember to add noise here on the function (final shape)
 #all functions should be on 
 
-def ASK_modulation(A,f,bit_stream):
+def ASK_modulation(bit_stream, A=1.0, f=1.0):
     sig_size = len(bit_stream)
     signal = np.zeros(sig_size*100)
     
@@ -29,7 +29,7 @@ def ASK_modulation(A,f,bit_stream):
     return signal
                 
 
-def FSK_modulation(A,f1,f2,bit_stream):
+def FSK_modulation(bit_stream, A=1.0, f1=1.0, f2=2.0):
     sig_size = len(bit_stream)
     signal = np.zeros(sig_size*100)
     
@@ -43,7 +43,7 @@ def FSK_modulation(A,f1,f2,bit_stream):
     
     return signal
                 
-def PSK_modulation(A,f,bit_stream):
+def PSK_modulation(bit_stream, A=1.0, f=1.0):
     sig_size = len(bit_stream)
     signal = np.zeros(sig_size*100)
     
@@ -57,7 +57,7 @@ def PSK_modulation(A,f,bit_stream):
     
     return signal
 
-def QPSK_modulation(A, f, bit_stream, samples_per_symbol=100):
+def QPSK_modulation(bit_stream, A=1.0, f=1.0, samples_per_symbol=100):
     """
     QPSK modulator:
       - bit_stream: list/array of 0/1 bits (length even; if odd, will be padded with 0)
@@ -134,7 +134,7 @@ inv_gray = {tuple(v): k for k,v in gray_map.items()}
 def bits_to_IQ(bits):
     return inv_gray[tuple(bits)]
 
-def QAM16_modulation(f, bit_stream):
+def QAM16_modulation(bit_stream, f=1.0):
     assert len(bit_stream) % 4 == 0, "16QAM usa 4 bits por símbolo"
 
     num_symbols = len(bit_stream)//4

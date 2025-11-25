@@ -11,7 +11,7 @@ import numpy as np
 import math
 
 #***********************************************DIGITAL MODULATION*******************************************
-def NRZ_polar_modulation(A, bit_stream):
+def NRZ_polar_modulation(bit_stream, A=1.0):
     signal = np.zeros(len(bit_stream) * 100)
 
     for i, bit in enumerate(bit_stream):
@@ -20,7 +20,7 @@ def NRZ_polar_modulation(A, bit_stream):
 
     return signal
 
-def manchester_modulation(A, bit_stream, samples_per_symbol=100):
+def manchester_modulation(bit_stream, A=1.0, samples_per_symbol=100):
     """
     Modula uma sequência de bits usando Manchester.
     Convenção: bit 1 -> [ +A (primeira metade) , -A (segunda metade) ]
@@ -45,7 +45,7 @@ def manchester_modulation(A, bit_stream, samples_per_symbol=100):
 
     return s
 
-def bipolar_modulation(A,bits, samples_per_bit=100):
+def bipolar_modulation(bit_stream, A=1.0, samples_per_bit=100):
     """
     Modulação Bipolar AMI com 100 amostras por bit.
     
@@ -130,28 +130,3 @@ def bipolar_demodulation(A,signal, samples_per_bit=100):
             bits.append(1)
 
     return bits
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
