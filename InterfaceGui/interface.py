@@ -22,7 +22,7 @@ class NetworkApp(Gtk.Application):
 class NetworkGUI(Gtk.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app)
-        self.set_title("🌐 Network Simulator")
+        self.set_title("Network Simulator")
         self.set_default_size(1000, 720)
 
         # === Apply Dark CSS ===
@@ -94,7 +94,7 @@ class NetworkGUI(Gtk.ApplicationWindow):
         box_controls = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         frame_controls.set_child(box_controls)
 
-        label_title = Gtk.Label(label="⚙️ Configurações de Simulação")
+        label_title = Gtk.Label(label="Configurações de Simulação")
         label_title.add_css_class("title")
         box_controls.append(label_title)
 
@@ -144,11 +144,11 @@ class NetworkGUI(Gtk.ApplicationWindow):
         box_buttons = Gtk.Box(spacing=10, halign=Gtk.Align.END, margin_top=10)
         box_controls.append(box_buttons)
 
-        self.button_simular = Gtk.Button(label="▶️ Simular Transmissão")
+        self.button_simular = Gtk.Button(label="Simular Transmissão")
         self.button_simular.connect("clicked", self.on_button_clicked)
         box_buttons.append(self.button_simular)
 
-        self.button_toggle = Gtk.Button(label="🗒️ Mostrar Mensagem")
+        self.button_toggle = Gtk.Button(label="Mostrar Mensagem")
         self.button_toggle.connect("clicked", self.on_toggle_view)
         box_buttons.append(self.button_toggle)
 
@@ -159,7 +159,7 @@ class NetworkGUI(Gtk.ApplicationWindow):
         box_view = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         frame_view.set_child(box_view)
 
-        label_results = Gtk.Label(label="📊 Resultados da Simulação")
+        label_results = Gtk.Label(label="Resultados da Simulação")
         label_results.add_css_class("title")
         box_view.append(label_results)
 
@@ -184,11 +184,11 @@ class NetworkGUI(Gtk.ApplicationWindow):
         if self.graph_widget.get_visible():
             self.graph_widget.hide()
             self.text_scrolled.show()
-            self.button_toggle.set_label("📉 Mostrar Gráficos")
+            self.button_toggle.set_label("Mostrar Gráficos")
         else:
             self.text_scrolled.hide()
             self.graph_widget.show()
-            self.button_toggle.set_label("🗒️ Mostrar Mensagem")
+            self.button_toggle.set_label("Mostrar Mensagem")
 
     def exibir_resposta(self, texto):
         self.textbuffer.set_text(texto)
