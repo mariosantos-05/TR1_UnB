@@ -82,7 +82,6 @@ Each layer is modularized and implemented in separate files:
 ## 🚀 Running the Simulator
 
 ```bash
-to be done...
-
+python3 -m InterfaceGUI.main 
 
 ```
