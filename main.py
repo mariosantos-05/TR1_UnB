@@ -94,6 +94,8 @@ from CamadaFisica.fisica_transmissor import (
     encode_manchester,
     encode_ASK,
     encode_FSK,
+    encode_PSK,
+    encode_QPSK,
     encode_16QAM
 )
 
@@ -148,12 +150,13 @@ class NetworkGUI(Gtk.Window):
             "Modulação Digital (Banda Base):", "Modulação por Portadora:"
         ]
         options = [
-            ["contagem", "bit-stuffing", "byte-stuffing"],
-            ["hamming", "nenhuma"],
-            ["paridade", "crc", "nenhuma"],
-            ["NRZ", "bipolar", "manchester", "16encode_16QAM"],
-            ["ASK", "FSK", "nenhuma"]
+            ["contagem", "bit-stuffing", "byte-stuffing"],      # Enquadramento
+            ["hamming", "nenhuma"],                             # Correção
+            ["paridade", "crc", "checksum", "nenhuma"],         # >>> Added checksum
+            ["NRZ", "bipolar", "manchester", "16encode_16QAM"], # Mod digital
+            ["ASK", "FSK", "PSK", "QPSK", "nenhuma"]            # >>> Added PSK + QPSK
         ]
+
 
         self.combos = []
 
@@ -305,7 +308,7 @@ class NetworkGUI(Gtk.Window):
             banda = upsample_signal(encode_bipolar(mensagem_bits), samples_per_bit)
         elif mod_digital == "manchester":
             banda = upsample_signal(encode_manchester(mensagem_bits), samples_per_bit)
-        elif mod_digital == "16encode_16QAM":
+        elif mod_digital == "encode_16QAM":
             raw, _ = encode_16QAM(mensagem_bits)
             banda = upsample_signal(np.real(raw), samples_per_bit)
         else:
@@ -314,10 +317,19 @@ class NetworkGUI(Gtk.Window):
         # --- CARRIER MODULATION ---
         if mod_portadora == "ASK":
             portadora = encode_ASK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+        
         elif mod_portadora == "FSK":
             portadora = encode_FSK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+        
+        elif mod_portadora == "PSK":
+            portadora = encode_PSK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+        
+        elif mod_portadora == "QPSK":
+            portadora = encode_QPSK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+        
         else:
             portadora = None
+
 
         # --- DRAW ---
         self.figure.clf()
