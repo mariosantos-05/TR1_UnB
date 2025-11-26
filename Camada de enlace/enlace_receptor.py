@@ -191,8 +191,6 @@ def verificar_paridade_par(bits_recebidos: str) -> tuple[bool, str]:
     # 2. Remoção do Bit de Paridade (último bit)
     dados_com_padding = bits_recebidos[:-1]
     
-    # 3. Remoção do Padding de Alinhamento 
-    dados_finais = dados_com_padding[7:]
     
     if not valido:
         print("[ERRO] Falha na verificação de paridade.")
