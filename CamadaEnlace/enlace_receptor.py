@@ -277,54 +277,66 @@ def remover_crc_e_padding(bits_recebidos: str, pad_len: int = 0) -> str:
 # Seção 4: CORREÇÃO DE ERROS (ERROR CORRECTION)
 # -------------------------------------------------------------------
 
+def receptor_hamming(bits_recebidos: str) -> str:
+    """
+    Verifica e corrige 1 bit de erro usando Hamming.
+    Retorna: dados_corrigidos_sem_bits_controle (string)
+    (mantive compatibilidade com o pipeline existente)
+    """
+    print("[RX-Correção] Hamming: Verificando...")
 
-def receptor_hamming(mensagem: str) -> str:
+    # --- comportamento idêntico ao receptor funcional anterior ---
+    msg = '$' + bits_recebidos
     bits_verif = {}
-    msg = '$' + mensagem
 
-    #Cada bit verificador vai ter sua paridade calculada
     for i in range(len(msg)):
         if _e_potencia_de_2(i):
             bits_a_somar = ''
             pulo = i
-            while (pulo < len(msg)):
-                bits_a_somar += msg[pulo:pulo+i] # aqui vamos salvando os bits que gerarão a paridade do bit verificador. Usando o mesmo esquema ensinando em aula: pega 2, pula 2. pega 4, pula 4...
-                pulo += i + i # é incrementado de 2i pois pulamos i.
-            bits_verif[i] = bits_a_somar #aqui nós INCLUÍMOS o bit de verificação
+            while pulo < len(msg):
+                bits_a_somar += msg[pulo:pulo + i]
+                pulo += i + i
+            bits_verif[i] = bits_a_somar
 
     for key, value in bits_verif.items():
         res = int(value[0])
         for bit in value[1:]:
-            res ^= int(bit) #aplicando xor entre todos os elementos para chegar no bit de paridade
-        bits_verif[key] = str(res) #salvando o bit de paridade no lugar dos elementos que estavam salvos
-    
-    #aqui nos lemos em reverso as paridades dos bits de verificação para encontrar o bit com erro
+            res ^= int(bit)
+        bits_verif[key] = str(res)
+
     error = ''
     for value in reversed(bits_verif.values()):
         error += value
-    lista = list(msg)
+
     if error == '':
-        i = 0
+        posicao_erro = 0
     else:
-        i = int(error, 2)
-    if i != 0:
-        if i < len(msg):
-            lista[i] = '0' if msg[i] == '1' else '1' 
+        posicao_erro = int(error, 2)
+
+    lista = list(msg)
+    if posicao_erro != 0:
+        if posicao_erro < len(msg):
+            print(f"[RX-Correção] ERRO DETECTADO na posição {posicao_erro}. Corrigindo...")
+            lista[posicao_erro] = '0' if msg[posicao_erro] == '1' else '1'
         else:
-            print(f"[Aviso Hamming] Posição de erro ({i}) fora do tamanho da mensagem ({len(msg)}). Correção ignorada.")
-    # Continua com a mensagem sem correção
+            print(f"[Aviso Hamming] Posição de erro ({posicao_erro}) fora do quadro ({len(msg)}). Correção ignorada.")
+    else:
+        print("[RX-Correção] Nenhum erro detectado.")
 
     msg = ''.join(lista)
 
-
-    #recuperando os dados originais
     dados = ''
     for i in range(len(msg)):
-        if not _e_potencia_de_2(i): # se não é potencia de 2, faz parte do dado
+        if not _e_potencia_de_2(i):
             dados += msg[i]
 
-    #para ver a posição do erro e a mensagem corrigida, adicionar msg, error no retorno
+    # Log minimal da posição do erro (mantemos essa informação disponível no log)
+    print(f"[RX-Correção] Posição do erro (0 = nenhum): {posicao_erro}")
+
+    # --- RETORNO ALTERADO: apenas a string de dados (compatível com pipeline) ---
     return dados[1:]
+
+
 
 
 def remover_bits_hamming(mensagem: str) -> str:
@@ -334,5 +346,3 @@ def remover_bits_hamming(mensagem: str) -> str:
             dados += mensagem[i]
     return dados
 
-def remover_bit_paridade(mensagem: str) -> str:
-    return mensagem[:-1]  # remove o último bit

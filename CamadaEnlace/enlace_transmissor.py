@@ -138,50 +138,51 @@ def adicionar_paridade_par(bits_dados: str) -> str:
     [DADOS] + [BIT_PARIDADE]
     """
 
-    #if len(bits_dados) % 8 != 0:
-    #    padding = 8 - (len(bits_dados) % 8)
-    #    bits_dados = '0' * padding + bits_dados
-
     print(f"[TX-Detecção] Paridade Par: Aplicando...")
     paridade = 0
     for bit in bits_dados:
         paridade ^= int(bit)
 
-    return bits_dados + ('1' if paridade else '0')
+    return bits_dados + str(paridade)
 
 
 def adicionar_checksum(bits_dados: str) -> str:
     """
-    Calcula um checksum 8-bit usando soma de complemento de 1,
-    sem adicionar qualquer padding.
+    Calcula o Checksum (Soma de Verificação) em blocos de 8 bits
+    usando aritmética de complemento de um (one's complement) e anexa ao final.
+    [DADOS] + [CHECKSUM (8 bits)]
     """
-    print("[TX-Detecção] Checksum 8-bit: Calculando...")
+    print(f"[TX-Detecção] Checksum 8-bit: Calculando...")
 
-    # Se necessário, aplicar padding deve ser feito FORA desta função, consistentemente no TX e RX.
-    # Aqui NÃO adicionamos padding, apenas trabalhamos com os bits existentes.
-
-    # 1. Se não for múltiplo de 8, completar à direita com zeros (não à esquerda).
-    #    Isso mantém o alinhamento e não altera o conteúdo sem controle.
+    # --- ALTERAÇÃO MÍNIMA: pad direita igual à versão funcional ---
     if len(bits_dados) % 8 != 0:
         falta = 8 - (len(bits_dados) % 8)
         bits_dados = bits_dados + ('0' * falta)
+    # --------------------------------------------------------------
+
+    # Agora sim converte para lista de bytes (sem alterar conteúdo)
+    lista_bytes_dados = [int(bits_dados[i:i+8], 2)
+                         for i in range(0, len(bits_dados), 8)]
 
     soma = 0
 
-    # 2. Soma os bytes
-    for i in range(0, len(bits_dados), 8):
-        byte = bits_dados[i:i+8]
-        soma += int(byte, 2)
+    # Soma os bytes
+    for byte in lista_bytes_dados:
+        soma += byte
 
-    # 3. Compacta os carries
+    # Trata carry
     while (soma >> 8) > 0:
         soma = (soma & 0xFF) + (soma >> 8)
 
-    # 4. Complemento de 1
+    # Complemento de 1
     checksum = (~soma) & 0xFF
     checksum_bits = format(checksum, '08b')
 
-    return bits_dados + checksum_bits
+    # Reconstrói string de dados
+    dados_formatados = ''.join(format(b, '08b') for b in lista_bytes_dados)
+
+    return dados_formatados + checksum_bits
+
 
 
 
@@ -189,75 +190,42 @@ POLI = 0x104C11DB7
 
 def crc32(bits_str: str) -> str:
     """
-    Calcula CRC-32 sem depender de pad_len (padding fixo de 64 bits).
+    Aplica padding específico (<64 bits) e calcula o CRC-32 (IEEE 802.3).
+    O cálculo usa divisão bitwise/aritmética.
+    Retorna: (mensagem_final_com_crc, tamanho_do_padding)
     """
-    padding = "0" * 64                     # <= padding fixo
+    pad_len = max(0, 64 - len(bits_str))
+    padding = "".join(str(i % 2) for i in range(pad_len))
     dados_padded = bits_str + padding
-
+    
+    # Prepara dados para divisão: converte para inteiro e adiciona 32 zeros
     data_int = int(dados_padded, 2) << 32
-
-    highest_bit = data_int.bit_length() - 1
+    
+    # 2. Loop de divisão polinomial
+    highest_bit = data_int.bit_length() - 1 if data_int != 0 else 0
+    
     for i in range(highest_bit, 31, -1):
         if (data_int >> i) & 1:
             data_int ^= POLI << (i - 32)
 
+    # O resto são os 32 bits menos significativos (o CRC)
     crc_val = data_int & 0xFFFFFFFF
-    crc_str = format(crc_val, "032b")
-
+    
+    crc_str = format(crc_val, '032b')
+    
     return dados_padded + crc_str
-
 
 # -------------------------------------------------------------------
 # Seção 4: CORREÇÃO DE ERROS (ERROR CORRECTION)
 # -------------------------------------------------------------------
 
-def transmissor_hamming(mensagem: str) -> str:
-    msg = '$' + mensagem 
-    aux = ''
-    bits_verif = {}
-    cont = 0
-
-    m = len(mensagem)
-    r = 0
-    while (2**r < r + m + 1): r += 1 # enquanto 2^r for menor que r + m + 1, continuar incrementando r
-
-    # Criando uma msg lista com a posição dos bits de verificação e também um dicionário para adicionar seus valores finais
-    for i in range (len(msg) + r):
-        if _e_potencia_de_2(i):
-            aux += 'b'
-            bits_verif[i] = '0'
-        else:
-            aux += msg[cont]
-            cont += 1
-
-
-    #Pegando os bits para calcular os bits verificadores
-    for i in range (len(aux)):
-        if aux[i] == 'b':
-            bits_a_somar = ''
-            pulo = i
-            while (pulo < len(aux)):
-                bits_a_somar += aux[pulo:pulo+i]
-                pulo += i + i
-            bits_verif[i] = bits_a_somar[1:] #removendo o próprio bit de verificação
-
-    #Calculando a paridade dos bits verificadores
-    lista = list(aux)
-    for key, value in bits_verif.items():
-        res = int(value[0])
-        for bit in value[1:]:
-            res ^= int(bit)
-        bits_verif[key] = str(res)
-        lista[key] = str(res)
-    aux = ''.join(lista)
-
-    #para ver os valores dos bits de verificação, incluir bits_verif no retorno
-    return aux[1:]
+def transmissor_hamming(bits_dados: str) -> str:
     """
     Codifica os dados com bits de Hamming, inserindo bits de paridade
     nas posições que são potências de 2.
     """
     print(f"[TX-Correção] Hamming: Codificando...")
+
     msg = '$' + bits_dados 
     aux = ''
     bits_verif = {}
@@ -265,32 +233,34 @@ def transmissor_hamming(mensagem: str) -> str:
 
     m = len(bits_dados)
     r = 0
-    # Calcula o número de bits de paridade 'r' necessários
-    while (2**r < r + m + 1): 
-        r += 1 
 
-    # 1. Cria a lista com posições dos bits de verificação ('b')
-    for i in range (1, m + r + 1):
+    # Calcula r exatamente como o código funcional faz
+    while (2**r < r + m + 1):
+        r += 1
+
+    # --- CORREÇÃO: voltar a usar índices 0-based como o código funcional ---
+    for i in range(len(msg) + r):
         if _e_potencia_de_2(i):
             aux += 'b'
             bits_verif[i] = '0'
         else:
-            aux += msg[cont+1]
+            aux += msg[cont]
             cont += 1
 
-    aux = '$' + aux
+    # --- CORREÇÃO: manter aux sem reintroduzir '$' ---
+    # aux = '$' + aux   # removido
 
-    # 2. Pega os bits para calcular os bits verificadores
-    for i in range (1, len(aux)):
+    # 2. calcular bits que cada verificador cobre (igual à versão funcional)
+    for i in range(len(aux)):
         if aux[i] == 'b':
             bits_a_somar = ''
             pulo = i
             while (pulo < len(aux)):
                 bits_a_somar += aux[pulo:pulo+i]
                 pulo += i + i
-            bits_verif[i] = bits_a_somar[1:] 
+            bits_verif[i] = bits_a_somar[1:]
 
-    # 3. Calculando a paridade (XOR)
+    # 3. XOR de paridade — igual ao original
     lista = list(aux)
     for key, value in bits_verif.items():
         res = int(value[0])
@@ -298,7 +268,7 @@ def transmissor_hamming(mensagem: str) -> str:
             res ^= int(bit)
         bits_verif[key] = str(res)
         lista[key] = str(res)
-    
+
     aux = ''.join(lista)
 
     return aux[1:]

@@ -9,7 +9,7 @@ from CamadaFisica.fisica_receptor import (
 from CamadaEnlace.enlace_receptor import (
     receptor_hamming, verificar_paridade_par, verificar_crc32,
     desenquadrar_contagem_caracteres, desenquadrar_bit_stuffing, desenquadrar_byte_stuffing,
-    remover_bit_paridade, remover_crc_e_padding, verificar_checksum
+    remover_crc_e_padding, verificar_checksum
 )
 
 DEBUG = False
@@ -101,7 +101,7 @@ class Receptor:
             if not verificar_paridade_par(dados):
                 debug("Erro de paridade detectado.")
             etapas_rx["removido_paridade"] = dados
-            return remover_bit_paridade(dados)
+            return (dados)[:-1]  # Remove o bit de paridade
 
         
         elif self.deteccao == "crc":
