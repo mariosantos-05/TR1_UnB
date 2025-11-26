@@ -219,7 +219,48 @@ def crc32(bits_str: str) -> tuple[str, int]:
 # Seção 4: CORREÇÃO DE ERROS (ERROR CORRECTION)
 # -------------------------------------------------------------------
 
-def transmissor_hamming(bits_dados: str) -> str:
+def transmissor_hamming(mensagem: str) -> str:
+    msg = '$' + mensagem 
+    aux = ''
+    bits_verif = {}
+    cont = 0
+
+    m = len(mensagem)
+    r = 0
+    while (2**r < r + m + 1): r += 1 # enquanto 2^r for menor que r + m + 1, continuar incrementando r
+
+    # Criando uma msg lista com a posição dos bits de verificação e também um dicionário para adicionar seus valores finais
+    for i in range (len(msg) + r):
+        if _e_potencia_de_2(i):
+            aux += 'b'
+            bits_verif[i] = '0'
+        else:
+            aux += msg[cont]
+            cont += 1
+
+
+    #Pegando os bits para calcular os bits verificadores
+    for i in range (len(aux)):
+        if aux[i] == 'b':
+            bits_a_somar = ''
+            pulo = i
+            while (pulo < len(aux)):
+                bits_a_somar += aux[pulo:pulo+i]
+                pulo += i + i
+            bits_verif[i] = bits_a_somar[1:] #removendo o próprio bit de verificação
+
+    #Calculando a paridade dos bits verificadores
+    lista = list(aux)
+    for key, value in bits_verif.items():
+        res = int(value[0])
+        for bit in value[1:]:
+            res ^= int(bit)
+        bits_verif[key] = str(res)
+        lista[key] = str(res)
+    aux = ''.join(lista)
+
+    #para ver os valores dos bits de verificação, incluir bits_verif no retorno
+    return aux[1:]
     """
     Codifica os dados com bits de Hamming, inserindo bits de paridade
     nas posições que são potências de 2.
