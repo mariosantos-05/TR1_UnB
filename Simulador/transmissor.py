@@ -8,10 +8,15 @@ from CamadaFisica.fisica_transmissor import (
     encode_ASK, encode_FSK, encode_PSK, encode_QPSK, encode_16QAM,
 )
 from CamadaEnlace.enlace_transmissor import (
-    transmissor_hamming, adicionar_paridade_par, crc32,adicionar_checksum,
+    transmissor_hamming, adicionar_paridade_par, crc32, adicionar_checksum,
     enquadrar_contagem_caracteres, enquadrar_bit_stuffing, enquadrar_byte_stuffing
 )
 
+DEBUG = False
+
+def debug(*msg):
+    if DEBUG:
+        print("[DEBUG TX]", *msg)
 
 class Transmissor:
     def __init__(self, enquadramento="contagem", correcao="hamming", deteccao="crc32",
@@ -24,9 +29,6 @@ class Transmissor:
         self.noise_level = noise_level
 
     def aplicar_ruido(self, dados_bits: str) -> str:
-        """
-        Simula ruído bit a bit, invertendo bits com probabilidade igual à taxa de ruído.
-        """
         if self.noise_level <= 0.0:
             return dados_bits
 
@@ -39,8 +41,8 @@ class Transmissor:
         return ''.join(resultado)
 
     def processar(self, dados: str) -> List[float]:
-        print("\n[DEBUG TX] --- Início do processamento no transmissor ---")
-        print("[DEBUG TX] Mensagem original:", dados)
+        debug("--- Início do processamento no transmissor ---")
+        debug("Mensagem original:", dados)
 
         etapas = {"original": dados}
         dados = self._processar_enquadramento(dados, etapas)
@@ -50,134 +52,121 @@ class Transmissor:
         resultado = self._processar_modulacao(dados, etapas)
 
         self.etapas = etapas
-        print("[DEBUG TX] --- Fim do processamento no transmissor ---\n")
+        debug("--- Fim do processamento no transmissor ---")
         return resultado
 
     def _processar_enquadramento(self, dados: str, etapas: dict) -> str:
-        """Aplica enquadramento nos dados"""
         enquadradores = {
-            "contagem": (enquadrar_contagem_caracteres, "contagem"),
-            "bit-stuffing": (enquadrar_bit_stuffing, "bit-stuffing"),
-            "byte-stuffing": (enquadrar_byte_stuffing, "byte-stuffing")
+            "contagem": enquadrar_contagem_caracteres,
+            "bit-stuffing": enquadrar_bit_stuffing,
+            "byte-stuffing": enquadrar_byte_stuffing
         }
 
         if self.enquadramento in enquadradores:
-            enquad_func, debug_msg = enquadradores[self.enquadramento]
-            print(debug_msg)
-            dados_enquadrados = enquad_func(dados)
+            debug("Aplicando enquadramento:", self.enquadramento)
+            dados_enquadrados = enquadradores[self.enquadramento](dados)
             etapas["enquadrado"] = dados_enquadrados
-            
-            print("[DEBUG TX] Após enquadramento:", dados_enquadrados)
-            print("[DEBUG TX] Qtdd de bits:", len(dados_enquadrados))
+
+            debug("Após enquadramento:", dados_enquadrados)
+            debug("Qtdd de bits:", len(dados_enquadrados))
             return dados_enquadrados
         
         return dados
 
     def _processar_correcao_erros(self, dados: str, etapas: dict) -> str:
-        """Aplica correção de erros (Hamming)"""
         if self.correcao == "hamming":
-            print("[DEBUG TX] Tamanho pré Hamming:", len(dados))
+            debug("Tamanho pré Hamming:", len(dados))
             dados_hamming = transmissor_hamming(dados)
             etapas["hamming"] = dados_hamming
-            print("[DEBUG TX] Após aplicação de Hamming:", dados_hamming)
+            debug("Após aplicação de Hamming:", dados_hamming)
             return dados_hamming
+        
         return dados
 
+
     def _processar_deteccao_erros(self, dados: str, etapas: dict) -> str:
-        """Aplica detecção de erros (paridade ou CRC)"""
         if self.deteccao == "paridade":
             dados_paridade = adicionar_paridade_par(dados)
             etapas["paridade"] = dados_paridade
-            print("[DEBUG TX] Após adição de bit de paridade:", dados_paridade)
+            debug("Após adição de paridade:", dados_paridade)
             return dados_paridade
-        
+
         elif self.deteccao == "crc":
-            print("[DEBUG TX] Tamanho pré crc32:", len(dados))
+            debug("Tamanho pré CRC:", len(dados))
             dados_crc = crc32(dados)
-            print("[DEBUG] DADOS ENTRADA :", dados)
-            print("[DEBUG] DADOS CRC     :", dados_crc)
-            print("[DEBUG] LEN ANTES     :", len(dados))
-            print("[DEBUG] LEN DEPOIS    :", len(dados_crc))
-            print("[DEBUG TX] Após adição de crc32:", dados_crc)
+            debug("Dados entrada:", dados)
+            debug("Dados CRC:", dados_crc)
+            debug("Len antes:", len(dados))
+            debug("Len depois:", len(dados_crc))
+            etapas["crc"] = dados_crc
             return dados_crc
+
         elif self.deteccao == "checksum":
             dados_checksum = adicionar_checksum(dados)
+            etapas["checksum"] = dados_checksum
+            debug("Após adição de checksum:", dados_checksum)
             return dados_checksum
-            
-        
+
         return dados
 
+
     def _aplicar_ruido_e_registrar(self, dados: str, etapas: dict) -> str:
-        """Aplica ruído e registra o resultado"""
         dados_com_ruido = self.aplicar_ruido(dados)
         etapas["com_ruido"] = dados_com_ruido
-        #print(f"[DEBUG TX] Após simulação de ruído (nível = {self.noise_level}):", dados_com_ruido)
+        debug(f"Após ruído (nível {self.noise_level}):", dados_com_ruido)
         return dados_com_ruido
+
 
     def _processar_modulacao(self, dados: str, etapas: dict) -> List[float]:
 
-        # Se a modulação de portadora for QPSK, NÃO modula digitalmente antes
-        if self.mod_portadora == "QPSK":
-            resultado = dados  # mantém bits puros
-        if self.mod_portadora == "16QAM":
-            resultado = dados  # mantém bits puros
+        if self.mod_portadora in ["QPSK", "16QAM"]:
+            resultado = dados
         else:
             moduladores_digital = {
-                "NRZ": (encode_NRZ, "NRZ"),
-                "bipolar": (encode_bipolar, "bipolar"),
-                "manchester": (encode_manchester, "manchester"),
+                "NRZ": encode_NRZ,
+                "bipolar": encode_bipolar,
+                "manchester": encode_manchester,
             }
 
             if self.mod_digital in moduladores_digital:
-                mod_func, mod_name = moduladores_digital[self.mod_digital]
-                resultado = mod_func(dados)
-                print(f"[DEBUG TX] Modulação digital {mod_name} realizada")
+                resultado = moduladores_digital[self.mod_digital](dados)
+                debug(f"Modulação digital {self.mod_digital} realizada")
             else:
                 resultado = dados
 
-        # Agora sim aplica modulação de portadora
         resultado = self._aplicar_modulacao_portadora(resultado)
         return resultado
 
-
     def _aplicar_modulacao_portadora(self, dados: List[float]) -> List[float]:
-        """Aplica modulação de portadora"""
         if self.mod_portadora == "ASK":
-            resultado = encode_ASK(dados)
-            print("[DEBUG TX] Modulação portadora ASK realizada")
+            debug("Modulação portadora ASK realizada")
+            return encode_ASK(dados)
         elif self.mod_portadora == "FSK":
-            resultado = encode_FSK(dados)
-            print("[DEBUG TX] Modulação portadora FSK realizada")
+            debug("Modulação portadora FSK realizada")
+            return encode_FSK(dados)
         elif self.mod_portadora == "PSK":
-            resultado = encode_PSK(dados)
-            print("[DEBUG TX] Modulação portadora PSK realizada")
+            debug("Modulação portadora PSK realizada")
+            return encode_PSK(dados)
         elif self.mod_portadora == "QPSK":
-            resultado = encode_QPSK(dados)
-            print("[DEBUG TX] Modulação portadora QPSK realizada")
+            debug("Modulação portadora QPSK realizada")
+            return encode_QPSK(dados)
         elif self.mod_portadora == "16QAM":
-            resultado = encode_16QAM(dados)
-        else:
-            resultado = dados
-        
-        return resultado
+            debug("Modulação portadora 16QAM realizada")
+            return encode_16QAM(dados)
 
+        return dados
 
 def transmitir_via_socket(mensagem: str, enquadramento: str, correcao: str, deteccao: str,
                           mod_digital: str, mod_portadora: str, noise_level: float = 0.0) -> dict:
-    """Transmite mensagem via socket usando o protocolo definido"""
-    HOST = 'localhost'
+
     PORT = 5000
+    HOST = 'localhost'
 
-    # Converte mensagem para bits
-    mensagem_em_bytes = mensagem.encode()
-    mensagem_em_bits = ''.join(f'{byte:08b}' for byte in mensagem_em_bytes)
+    mensagem_em_bits = ''.join(f'{byte:08b}' for byte in mensagem.encode())
 
-    # Processa a mensagem no transmissor
     tx = Transmissor(enquadramento, correcao, deteccao, mod_digital, mod_portadora, noise_level)
     sinal_a_transmitir = tx.processar(mensagem_em_bits)
-    print(sinal_a_transmitir)
 
-    # Prepara pacote para transmissão
     pacotao = {
         "msg": sinal_a_transmitir,
         "enq": enquadramento,
@@ -191,15 +180,13 @@ def transmitir_via_socket(mensagem: str, enquadramento: str, correcao: str, dete
 
     sinal_a_transmitir_em_bytes = pickle.dumps(pacotao)
 
-    # Transmite via socket
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((HOST, PORT))
 
     client.sendall(sinal_a_transmitir_em_bytes)
     client.shutdown(socket.SHUT_WR)
-    print(f"[Transmissor] Dados enviados via socket")
+    print("[Transmissor] Dados enviados via socket")
 
-    # Recebe resposta
     dados_resposta = b''
     while True:
         parte = client.recv(1024)
@@ -207,11 +194,7 @@ def transmitir_via_socket(mensagem: str, enquadramento: str, correcao: str, dete
             break
         dados_resposta += parte
 
-    mensagem_recebida = pickle.loads(dados_resposta)
     client.close()
+    return pickle.loads(dados_resposta)
 
-    return mensagem_recebida
-
-
-# Alias para manter compatibilidade
 transmitir_via_Socket = transmitir_via_socket

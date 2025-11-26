@@ -87,7 +87,6 @@ def apply_dark_css():
         screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
     )
 
-
 from CamadaFisica.fisica_transmissor import (
     encode_NRZ,
     encode_bipolar,
@@ -115,14 +114,12 @@ import numpy as np
 def upsample_signal(signal, samples_per_bit=20):
     return np.repeat(signal, samples_per_bit)
 
-
 class NetworkGUI(Gtk.Window):
     def __init__(self):
         super().__init__(title="Network Simulator")
         self.set_title("Network Simulator")
         self.set_default_size(1000, 720)
 
-        # APPLY CSS HERE
         apply_dark_css()
 
         self.box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -138,7 +135,7 @@ class NetworkGUI(Gtk.Window):
         grid = Gtk.Grid(row_spacing=10, column_spacing=12, column_homogeneous=False)
         self.box_main.pack_start(grid, False, False, 0)
 
-        # ENTRY (responsive)
+        # ENTRY 
         self.entry = Gtk.Entry()
         self.entry.set_placeholder_text("Digite sua mensagem aqui")
         self.entry.set_hexpand(True)
@@ -150,11 +147,11 @@ class NetworkGUI(Gtk.Window):
             "Modulação Digital (Banda Base):", "Modulação por Portadora:"
         ]
         options = [
-            ["contagem", "bit-stuffing", "byte-stuffing"],      # Enquadramento
-            ["hamming", "nenhuma"],                             # Correção
-            ["paridade", "crc", "checksum", "nenhuma"],         # >>> Added checksum
-            ["NRZ", "bipolar", "manchester", "16encode_16QAM"], # Mod digital
-            ["ASK", "FSK", "PSK", "QPSK", "nenhuma"]            # >>> Added PSK + QPSK
+            ["contagem", "bit-stuffing", "byte-stuffing"],      
+            ["hamming", "nenhuma"],                             
+            ["paridade", "crc", "checksum", "nenhuma"],         
+            ["NRZ", "bipolar", "manchester", "16encode_16QAM"], 
+            ["ASK", "FSK", "PSK", "QPSK", "nenhuma"]           
         ]
 
 
@@ -166,14 +163,11 @@ class NetworkGUI(Gtk.Window):
             for opt in opts:
                 combo.append_text(opt)
             combo.set_active(0)
-
-            # make combos responsive too
             combo.set_hexpand(True)
             combo.set_halign(Gtk.Align.FILL)
 
             grid.attach(label, 0, i + 1, 1, 1)
-            grid.attach(combo, 1, i + 1, 3, 1)  # let combo span more columns
-
+            grid.attach(combo, 1, i + 1, 3, 1)  
             self.combos.append(combo)
 
         # NOISE
@@ -207,7 +201,7 @@ class NetworkGUI(Gtk.Window):
 
         self.box_main.pack_start(button_box, False, False, 6)
 
-        # TEXTVIEW (keeps scrolledwindow)
+        # TEXTVIEW
         self.textview = Gtk.TextView()
         self.textview.set_editable(False)
         self.textbuffer = self.textview.get_buffer()
@@ -261,10 +255,6 @@ class NetworkGUI(Gtk.Window):
         self.box_main.pack_start(self.text_scrolled, True, True, 0)
         self.text_scrolled.hide()
 
-
-    ###########################################################################
-    # VIEW TOGGLE
-    ###########################################################################
     def on_toggle_view(self, button):
         if self.canvas.get_visible():
             self.canvas.hide()
@@ -275,18 +265,12 @@ class NetworkGUI(Gtk.Window):
             self.canvas.show()
             self.toggle_button.set_label("Mostrar Mensagem")
 
-    ###########################################################################
-    # DISPLAY TEXT / ERRORS
-    ###########################################################################
     def exibir_resposta(self, texto):
         self.textbuffer.set_text(f"Mensagem recebida do servidor:\n{texto}")
 
     def exibir_erro(self, erro):
         self.textbuffer.set_text(f"Erro ao enviar/receber: {erro}")
 
-    ###########################################################################
-    # BUTTON HANDLER
-    ###########################################################################
     def on_button_clicked(self, widget):
 
         mensagem_original = self.entry.get_text()
@@ -378,10 +362,6 @@ class NetworkGUI(Gtk.Window):
 
         Thread(target=tarefa, daemon=True).start()
 
-
-###############################################################################
-# MAIN
-###############################################################################
 if __name__ == "__main__":
 
     Thread(

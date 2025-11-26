@@ -4,6 +4,7 @@ import time
 from Simulador.receptor import receber_via_Socket     
 from Simulador.transmissor import transmitir_via_Socket  
 
+#codigo de teste em terminal
 
 def main():
     ENQ = "contagem" #todos funcionando! 
@@ -23,7 +24,6 @@ def main():
     # Tempo para o servidor subir
     time.sleep(1)
 
-    # Mensagem a enviar
     mensagem = "Hello Mundo! Testando comunicação via socket👆."
 
     print("\n=== TRANSMISSOR ENVIANDO ===\n")
