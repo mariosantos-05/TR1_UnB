@@ -35,6 +35,7 @@ class NetworkGUI(Gtk.Window):
         super().__init__(title="Network Simulator")
         self.set_default_size(900, 700)
         self.set_border_width(10)
+        
 
         self.box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.add(self.box_main)
