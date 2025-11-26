@@ -3,8 +3,8 @@ import socket
 import pickle
 
 from CamadaFisica.fisica_receptor import (
-    decode_NRZ, decode_bipolar, decode_manchester,
-    decode_ASK, decode_FSK, decode_PSK, decode_QPSK, decode_16QAM
+    NRZ_polar_demodulation, bipolar_demodulation, manchester_demodulation_correlator,
+    ASK_demodulation, FSK_demodulation, PSK_demodulation, QPSK_demodulation, QAM16_demodulation
 )
 from CamadaEnlace.enlace_receptor import (
     receptor_hamming, verificar_paridade_par, verificar_crc32,
@@ -12,7 +12,7 @@ from CamadaEnlace.enlace_receptor import (
     remover_crc_e_padding, verificar_checksum
 )
 
-DEBUG = False
+DEBUG = True
 
 def debug(*msg):
     if DEBUG:
@@ -57,15 +57,15 @@ class Receptor:
 
     def _demodular_portadora(self, dados):
         if self.mod_portadora == "QPSK":
-            return decode_QPSK(dados)
+            return QPSK_demodulation(dados)
         if self.mod_portadora == "16QAM":
-            return decode_16QAM(dados)
+            return QAM16_demodulation(dados)
         if self.mod_portadora == "ASK":
-            return decode_ASK(dados)
+            return ASK_demodulation(dados)
         if self.mod_portadora == "FSK":
-            return decode_FSK(dados)
+            return FSK_demodulation(dados)
         if self.mod_portadora == "PSK":
-            return decode_PSK(dados)
+            return PSK_demodulation(dados)
         return dados
 
     def _demodular_digital(self, dados: List[int]) -> List[int]:
@@ -74,9 +74,9 @@ class Receptor:
             return dados  # Sem demodulação digital nessas modulações
 
         demoduladores = {
-            "NRZ": (decode_NRZ, "NRZ"),
-            "bipolar": (decode_bipolar, "bipolar"),
-            "manchester": (decode_manchester, "manchester"),
+            "NRZ": (NRZ_polar_demodulation, "NRZ"),
+            "bipolar": (bipolar_demodulation, "bipolar"),
+            "manchester": (manchester_demodulation_correlator, "manchester"),
         }
 
         if self.mod_digital in demoduladores:

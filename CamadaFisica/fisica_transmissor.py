@@ -4,7 +4,7 @@ Created on Thu Nov 20 21:43:34 2025
 
 @author: gabri
 
-Modulacao digital
+Modulacao digital e portadora
 """
 
 import numpy as np
@@ -12,7 +12,7 @@ import math
 from typing import List
 
 
-def encode_NRZ(bits: str) -> List[float]:
+def NRZ_polar_modulation(bits: str, A=1) -> List[float]:
     signal = []
     for bit in bits:
         if bit == '1':
@@ -21,7 +21,7 @@ def encode_NRZ(bits: str) -> List[float]:
             signal.append(-1.0)
     return signal
 
-def encode_manchester(bits: str) -> List[float]: 
+def manchester_modulation(bits: str) -> List[float]: 
  
     signal = []
     for bit in bits:
@@ -32,21 +32,26 @@ def encode_manchester(bits: str) -> List[float]:
     return signal
 
 
-def encode_bipolar(bits: str) -> list[float]:
+def bipolar_modulation(bits):
+    """
+    Modulação Bipolar AMI equivalente à encode_bipolar,
+    mas usando a estrutura original da função dada.
+    """
     signal = []
-    last = -1 
+    last_pulse = -1  # igual à encode_bipolar: primeiro '1' vira +1
+
     for b in bits:
         if b == '0':
-            signal.append(0.0)
+            level = 0.0
         else:
-            last = -last   # alterna sinal
-            signal.append(float(last))
+            last_pulse = -last_pulse  # alterna entre +1 e -1
+            level = float(last_pulse)
+
+        signal.append(level)
 
     return signal
 
-
-
-def encode_ASK(bits: list[float], freq=5, sample_rate=100):
+def ASK_modulation(bits: list[float], freq=5, sample_rate=100):
     """
     Amplitude Shift Keying: codifica bits em uma onda com amplitude variável.
     Recebe uma lista de floats e retorna uma lista de floats
@@ -61,7 +66,7 @@ def encode_ASK(bits: list[float], freq=5, sample_rate=100):
     return np.array(signal)
                 
 
-def encode_FSK(bits: list[int], f1=5, f2=10, sample_rate=100):
+def FSK_modulation(bits: list[int], f1=5, f2=10, sample_rate=100):
     t = np.linspace(0, 1, sample_rate, endpoint=False)
     signal = []
 
@@ -73,7 +78,7 @@ def encode_FSK(bits: list[int], f1=5, f2=10, sample_rate=100):
     return np.array(signal)
 
                 
-def encode_PSK(bits: list[int], f=5, sample_rate=100):
+def PSK_modulation(bits: list[int], f=5, sample_rate=100):
     t = np.linspace(0, 1, sample_rate, endpoint=False)
     signal = []
 
@@ -84,7 +89,7 @@ def encode_PSK(bits: list[int], f=5, sample_rate=100):
 
     return np.array(signal)
 
-def encode_QPSK(bit_stream, f=1.0):
+def QPSK_modulation(bit_stream, f=1.0):
 
     # Converte qualquer entrada para bit real (0 ou 1)
     bit_stream = [1 if str(b) in ["1", "1.0", "+1", "True"] else 0 for b in bit_stream]
@@ -147,7 +152,7 @@ def bits_to_IQ(bits):
     return inv_gray[tuple(bits)]
 
 
-def encode_16QAM(bit_stream, f=1.0, samples_per_symbol=100):
+def QAM16_modulation(bit_stream, f=1.0, samples_per_symbol=100):
 
     # Converte string para inteiro (e evita NRZ se vier -1/+1)
     bit_stream = [1 if str(b) in ["1", "1.0"] else 0 for b in bit_stream]

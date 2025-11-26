@@ -4,15 +4,15 @@ import pickle
 import socket
 
 from CamadaFisica.fisica_transmissor import (
-    encode_NRZ, encode_bipolar, encode_manchester,
-    encode_ASK, encode_FSK, encode_PSK, encode_QPSK, encode_16QAM,
+    NRZ_polar_modulation, bipolar_modulation, manchester_modulation,
+    ASK_modulation, FSK_modulation, PSK_modulation, QPSK_modulation, QAM16_modulation,
 )
 from CamadaEnlace.enlace_transmissor import (
     transmissor_hamming, adicionar_paridade_par, crc32, adicionar_checksum,
     enquadrar_contagem_caracteres, enquadrar_bit_stuffing, enquadrar_byte_stuffing
 )
 
-DEBUG = False
+DEBUG = True
 
 def debug(*msg):
     if DEBUG:
@@ -123,9 +123,9 @@ class Transmissor:
             resultado = dados
         else:
             moduladores_digital = {
-                "NRZ": encode_NRZ,
-                "bipolar": encode_bipolar,
-                "manchester": encode_manchester,
+                "NRZ": NRZ_polar_modulation,
+                "bipolar": bipolar_modulation,
+                "manchester": manchester_modulation,
             }
 
             if self.mod_digital in moduladores_digital:
@@ -140,19 +140,19 @@ class Transmissor:
     def _aplicar_modulacao_portadora(self, dados: List[float]) -> List[float]:
         if self.mod_portadora == "ASK":
             debug("Modulação portadora ASK realizada")
-            return encode_ASK(dados)
+            return ASK_modulation(dados)
         elif self.mod_portadora == "FSK":
             debug("Modulação portadora FSK realizada")
-            return encode_FSK(dados)
+            return FSK_modulation(dados)
         elif self.mod_portadora == "PSK":
             debug("Modulação portadora PSK realizada")
-            return encode_PSK(dados)
+            return PSK_modulation(dados)
         elif self.mod_portadora == "QPSK":
             debug("Modulação portadora QPSK realizada")
-            return encode_QPSK(dados)
+            return QPSK_modulation(dados)
         elif self.mod_portadora == "16QAM":
             debug("Modulação portadora 16QAM realizada")
-            return encode_16QAM(dados)
+            return QAM16_modulation(dados)
 
         return dados
 

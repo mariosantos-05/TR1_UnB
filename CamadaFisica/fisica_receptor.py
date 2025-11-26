@@ -4,7 +4,7 @@ Created on Thu Nov 20 21:43:34 2025
 
 @author: gabri
 
-Modulacao digital
+Modulacao digital e portadora
 """
 
 import numpy as np
@@ -12,8 +12,8 @@ import math
 from typing import List
 
 
-#***********************************************DIGITAL DEMODULATION******************************************
-def decode_NRZ(signal):
+#********************************Demodulation functions (should resist noise)**********************************
+def NRZ_polar_demodulation(signal):
     """
     Demodula sinal NRZ-Polar.
     Assume que sinal é lista de níveis (ex: +1, -1)
@@ -27,7 +27,8 @@ def decode_NRZ(signal):
             bits.append('0')
     return ''.join(bits)
 
-def decode_manchester(signal):
+
+def manchester_demodulation_correlator(signal):
     """
     Demodula sinal Manchester.
     Assume que sinal é lista de níveis com comprimento par,
@@ -47,7 +48,7 @@ def decode_manchester(signal):
             bits.append('0')
     return ''.join(bits)
 
-def decode_bipolar(signal: list[float]) -> str:
+def bipolar_demodulation(signal: list[float]) -> str:
     """
     Decodificação Bipolar AMI (1 amostra por bit).
     Níveis:
@@ -65,7 +66,7 @@ def decode_bipolar(signal: list[float]) -> str:
     return ''.join(bits)
 
 
-def decode_ASK(signal, freq=5, sample_rate=100):
+def ASK_demodulation(signal, freq=5, sample_rate=100):
     """
     Demodula um sinal ASK e retorna a sequência de bits.
     """
@@ -88,7 +89,7 @@ def decode_ASK(signal, freq=5, sample_rate=100):
 
 
 #receiveis a signal sequence that corresponds to one symbol. to online decifration
-def decode_FSK(signal, f1=5, f2=10, sample_rate=100):
+def FSK_demodulation(signal, f1=5, f2=10, sample_rate=100):
     """
     Demodula um sinal FSK e retorna os bits detectados (0 ou 1).
     """
@@ -114,7 +115,7 @@ def decode_FSK(signal, f1=5, f2=10, sample_rate=100):
     return bits
 
         
-def decode_PSK(signal, f=5, sample_rate=100):
+def PSK_demodulation(signal, f=5, sample_rate=100):
 
     num_symbols = len(signal) // sample_rate
     bits = []
@@ -137,7 +138,7 @@ def decode_PSK(signal, f=5, sample_rate=100):
 
 
     
-def decode_QPSK(signal, f=1.0):
+def QPSK_demodulation(signal, f=1.0):
 
     num_symbols = len(signal)//100
     bits = []
@@ -192,7 +193,7 @@ gray_map = {
 }
 
 
-def decode_16QAM(signal, f=1.0, samples_per_symbol=100):
+def QAM16_demodulation(signal, f=1.0, samples_per_symbol=100):
 
     num_symbols = len(signal) // samples_per_symbol
     bit_stream = []

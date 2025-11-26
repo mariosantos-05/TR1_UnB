@@ -88,14 +88,14 @@ def apply_dark_css():
     )
 
 from CamadaFisica.fisica_transmissor import (
-    encode_NRZ,
-    encode_bipolar,
-    encode_manchester,
-    encode_ASK,
-    encode_FSK,
-    encode_PSK,
-    encode_QPSK,
-    encode_16QAM
+    NRZ_polar_modulation,
+    bipolar_modulation,
+    manchester_modulation,
+    ASK_modulation,
+    FSK_modulation,
+    PSK_modulation,
+    QPSK_modulation,
+    QAM16_modulation
 )
 
 from Simulador.transmissor import transmitir_via_Socket
@@ -150,8 +150,8 @@ class NetworkGUI(Gtk.Window):
             ["contagem", "bit-stuffing", "byte-stuffing"],      
             ["hamming", "nenhuma"],                             
             ["paridade", "crc", "checksum", "nenhuma"],         
-            ["NRZ", "bipolar", "manchester", "16encode_16QAM"], 
-            ["ASK", "FSK", "PSK", "QPSK", "nenhuma"]           
+            ["NRZ", "bipolar", "manchester"], 
+            ["ASK", "FSK", "PSK", "QPSK", "16QAM", "nenhuma"]           
         ]
 
 
@@ -287,32 +287,35 @@ class NetworkGUI(Gtk.Window):
 
         # --- DIGITAL MODULATION ---
         if mod_digital == "NRZ":
-            banda = upsample_signal(encode_NRZ(mensagem_bits), samples_per_bit)
+            banda = upsample_signal(NRZ_polar_modulation(mensagem_bits), samples_per_bit)
         elif mod_digital == "bipolar":
-            banda = upsample_signal(encode_bipolar(mensagem_bits), samples_per_bit)
+            banda = upsample_signal(bipolar_modulation(mensagem_bits), samples_per_bit)
         elif mod_digital == "manchester":
-            banda = upsample_signal(encode_manchester(mensagem_bits), samples_per_bit)
-        elif mod_digital == "encode_16QAM":
-            raw, _ = encode_16QAM(mensagem_bits)
-            banda = upsample_signal(np.real(raw), samples_per_bit)
+            banda = upsample_signal(manchester_modulation(mensagem_bits), samples_per_bit)
         else:
             banda = np.array([])
 
         # --- CARRIER MODULATION ---
         if mod_portadora == "ASK":
-            portadora = encode_ASK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
-        
+            portadora = ASK_modulation(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+
         elif mod_portadora == "FSK":
-            portadora = encode_FSK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
-        
+            portadora = FSK_modulation(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+
         elif mod_portadora == "PSK":
-            portadora = encode_PSK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
-        
+            portadora = PSK_modulation(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+
         elif mod_portadora == "QPSK":
-            portadora = encode_QPSK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
-        
+            portadora = QPSK_modulation(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+
+        elif mod_portadora == "16QAM":
+            portadora = QAM16_modulation(
+                banda.tolist() if isinstance(banda, np.ndarray) else banda
+            )
+
         else:
             portadora = None
+
 
 
         # --- DRAW ---

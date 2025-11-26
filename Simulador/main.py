@@ -9,9 +9,9 @@ from Simulador.transmissor import transmitir_via_Socket
 def main():
     ENQ = "contagem" #todos funcionando! 
     COR = "hamming"  #apenas hamming ok! 
-    DET = "paridade" #todos funcionando
-    MOD_DIG = "bipolar"   # todos funcionando
-    MOD_POR = "ASK" # todos funcionando
+    DET = "crc" #todos funcionando
+    MOD_DIG = "NRZ"   # todos funcionando
+    MOD_POR = "PSK" # todos funcionando
     NOISE = 0.0
 
     
