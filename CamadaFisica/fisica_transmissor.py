@@ -13,9 +13,6 @@ from typing import List
 
 
 def encode_NRZ(bits: str) -> List[float]:
-    """
-    NRZ Polar: 1 → +1, 0 → -1
-    """
     signal = []
     for bit in bits:
         if bit == '1':
@@ -24,51 +21,29 @@ def encode_NRZ(bits: str) -> List[float]:
             signal.append(-1.0)
     return signal
 
-def encode_manchester(bit_stream, A=1.0, samples_per_symbol=100):
-    """
-    Modula uma sequência de bits usando Manchester.
-    Convenção: bit 1 -> [ +A (primeira metade) , -A (segunda metade) ]
-                bit 0 -> [ -A (primeira metade) , +A (segunda metade) ]
-    samples_per_symbol deve ser par (divisível por 2).
-    Retorna: numpy.array de amostras (float)
-    """
-    if samples_per_symbol % 2 != 0:
-        raise ValueError("samples_per_symbol deve ser par para Manchester")
-    num_bits = len(bit_stream)
-    s = np.zeros(num_bits * samples_per_symbol)
-    half = samples_per_symbol // 2
-
-    for i, b in enumerate(bit_stream):
-        start = i * samples_per_symbol
-        if b == 1:
-            s[start : start + half] = A           # primeira metade +A
-            s[start + half : start + samples_per_symbol] = -A  # segunda metade -A
-        else:
-            s[start : start + half] = -A
-            s[start + half : start + samples_per_symbol] = A
-
-    return s
-
-def encode_bipolar(bit_stream, A=1.0, samples_per_bit=100):
-    """
-    Modulação Bipolar AMI com 100 amostras por bit.
-    
-    Escolher amplitudes maiores aumenta resistencia a ruidos maiores na demodulacao como esta implementada.
-    """
+def encode_manchester(bits: str) -> List[float]: 
+ 
     signal = []
-    last_pulse = -1  # para que o primeiro 1 seja +1
-
-    for b in bit_stream:
-        if b == 0:
-            level = 0
+    for bit in bits:
+        if bit == '1':
+            signal.extend([1.0, -1.0])
         else:
-            last_pulse = -last_pulse  # alterna entre +1 e -1
-            level = last_pulse
+            signal.extend([-1.0, 1.0])
+    return signal
 
-        # Repete o valor 'level' por 100 amostras
-        signal.extend([level * A] * samples_per_bit)
 
-    return np.array(signal)
+def encode_bipolar(bits: str) -> list[float]:
+    signal = []
+    last = -1 
+    for b in bits:
+        if b == '0':
+            signal.append(0.0)
+        else:
+            last = -last   # alterna sinal
+            signal.append(float(last))
+
+    return signal
+
 
 
 def encode_ASK(bits: list[float], freq=5, sample_rate=100):

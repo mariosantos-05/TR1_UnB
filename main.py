@@ -1,3 +1,93 @@
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, Gdk, GLib
+
+def apply_dark_css():
+    css = b"""
+    /* === GENERAL WINDOW === */
+    window {
+        background: #141820;
+        color: #e0e6ed;
+    }
+
+    box, grid {
+        background: transparent;
+    }
+
+    entry, 
+    spinbutton,
+    comboboxtext {
+        background: #222836;
+        color: white;
+        border-radius: 6px;
+        padding: 6px;
+        border: 1px solid #333c4f;
+    }
+
+    label {
+        color: #e0e6ed;
+        font-size: 13px;
+    }
+
+    /* Titles */
+    label.title {
+        color: #46a0ff;
+        font-size: 17px;
+        font-weight: bold;
+        margin-bottom: 6px;
+    }
+
+    /* Frames */
+    frame {
+        background: #1d232f;
+        border-radius: 10px;
+        border: 1px solid #2b3240;
+        padding: 10px;
+        margin-bottom: 12px;
+    }
+
+    /* Buttons */
+    button {
+        background: #2d8bff;
+        color: white;
+        border-radius: 8px;
+        font-weight: bold;
+        padding: 8px 14px;
+        border: none;
+    }
+
+    button:hover {
+        background: #1c6ed6;
+    }
+
+    /* TextView */
+    textview text {
+        background: #1b202b;
+        color: #b5c0d0;
+    }
+
+    textview {
+        background: #1b202b;
+        border-radius: 8px;
+        padding: 8px;
+        border: 1px solid #2b3240;
+    }
+
+    scrolledwindow {
+        background: #1b202b;
+        border-radius: 8px;
+        border: 1px solid #2b3240;
+    }
+    """
+
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css)
+    screen = Gdk.Screen.get_default()
+    Gtk.StyleContext.add_provider_for_screen(
+        screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+
+
 from CamadaFisica.fisica_transmissor import (
     encode_NRZ,
     encode_bipolar,
@@ -11,11 +101,6 @@ from Simulador.transmissor import transmitir_via_Socket
 from Simulador.receptor import receber_via_Socket   
 
 from threading import Thread
-from gi.repository import GLib
-
-import gi
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
 
 import matplotlib
 matplotlib.use('GTK3Agg')
@@ -26,32 +111,42 @@ import numpy as np
 
 
 def upsample_signal(signal, samples_per_bit=20):
-    """Repete cada valor do sinal samples_per_bit vezes para suavizar a forma de onda"""
     return np.repeat(signal, samples_per_bit)
 
 
 class NetworkGUI(Gtk.Window):
     def __init__(self):
         super().__init__(title="Network Simulator")
-        self.set_default_size(900, 700)
-        self.set_border_width(10)
-        
+        self.set_title("Network Simulator")
+        self.set_default_size(1000, 720)
 
-        self.box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        # APPLY CSS HERE
+        apply_dark_css()
+
+        self.box_main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.add(self.box_main)
 
-        # --- Controles organizados em grid para economizar espaço ---
-        grid = Gtk.Grid(row_spacing=6, column_spacing=12)
+        # --- TITLE ---
+        title = Gtk.Label(label="Configurações de Simulação")
+        title.get_style_context().add_class("title")
+        title.set_halign(Gtk.Align.START)
+        self.box_main.pack_start(title, False, False, 6)
+
+        # --- MAIN GRID ---
+        grid = Gtk.Grid(row_spacing=10, column_spacing=12, column_homogeneous=False)
         self.box_main.pack_start(grid, False, False, 0)
 
-        # Entrada de texto
+        # ENTRY (responsive)
         self.entry = Gtk.Entry()
         self.entry.set_placeholder_text("Digite sua mensagem aqui")
-        grid.attach(self.entry, 0, 0, 4, 1)  # ocupa 4 colunas na linha 0
+        self.entry.set_hexpand(True)
+        self.entry.set_halign(Gtk.Align.FILL)
+        grid.attach(self.entry, 0, 0, 4, 1)
 
-        # Labels e combos
-        labels = ["Enquadramento:", "Correção de Erros:", "Detecção de Erros:", 
-                  "Modulação Digital (Banda Base):", "Modulação por Portadora:"]
+        labels = [
+            "Enquadramento:", "Correção de Erros:", "Detecção de Erros:", 
+            "Modulação Digital (Banda Base):", "Modulação por Portadora:"
+        ]
         options = [
             ["contagem", "bit-stuffing", "byte-stuffing"],
             ["hamming", "nenhuma"],
@@ -69,76 +164,128 @@ class NetworkGUI(Gtk.Window):
                 combo.append_text(opt)
             combo.set_active(0)
 
-            # Organiza em duas colunas: label à esquerda, combo à direita
+            # make combos responsive too
+            combo.set_hexpand(True)
+            combo.set_halign(Gtk.Align.FILL)
+
             grid.attach(label, 0, i + 1, 1, 1)
-            grid.attach(combo, 1, i + 1, 1, 1)
+            grid.attach(combo, 1, i + 1, 3, 1)  # let combo span more columns
 
             self.combos.append(combo)
 
-        # Spin para ruído
+        # NOISE
+        label_noise = Gtk.Label(label="Taxa de Ruído (0.0 a 1.0):", halign=Gtk.Align.START)
         self.noise_adjustment = Gtk.Adjustment(0.0, 0.0, 1.0, 0.01, 0.1, 0.0)
         self.noise_spin = Gtk.SpinButton()
         self.noise_spin.set_adjustment(self.noise_adjustment)
         self.noise_spin.set_digits(2)
-        self.noise_spin.set_value(0.0)
+        self.noise_spin.set_hexpand(False)
 
-        label_noise = Gtk.Label(label="Taxa de Ruído (0.0 a 1.0):", halign=Gtk.Align.START)
-        grid.attach(label_noise, 2, 1, 1, 1)
-        grid.attach(self.noise_spin, 3, 1, 1, 1)
+        grid.attach(label_noise, 0, 6, 1, 1)
+        grid.attach(self.noise_spin, 1, 6, 1, 1)
 
-        # Botão para simular
+        # BUTTONS - responsive box
+        button_box = Gtk.Box(spacing=10)
+        button_box.set_homogeneous(True)
+        button_box.set_hexpand(True)
+
         self.button = Gtk.Button(label="Simular Transmissão")
         self.button.connect("clicked", self.on_button_clicked)
-        grid.attach(self.button, 2, 2, 2, 1)  # ocupa 2 colunas
+        self.button.set_hexpand(True)
+        self.button.set_halign(Gtk.Align.FILL)
 
-        # Botão para alternar entre mensagem e gráfico
         self.toggle_button = Gtk.Button(label="Mostrar Mensagem")
         self.toggle_button.connect("clicked", self.on_toggle_view)
-        grid.attach(self.toggle_button, 2, 3, 2, 1)
+        self.toggle_button.set_hexpand(True)
+        self.toggle_button.set_halign(Gtk.Align.FILL)
 
-        # --- Área de mensagem (TextView em ScrolledWindow) ---
+        button_box.pack_start(self.button, True, True, 0)
+        button_box.pack_start(self.toggle_button, True, True, 0)
+
+        self.box_main.pack_start(button_box, False, False, 6)
+
+        # TEXTVIEW (keeps scrolledwindow)
         self.textview = Gtk.TextView()
         self.textview.set_editable(False)
         self.textbuffer = self.textview.get_buffer()
 
         self.text_scrolled = Gtk.ScrolledWindow()
         self.text_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        self.text_scrolled.set_min_content_height(300)
-        self.text_scrolled.set_max_content_height(400)
         self.text_scrolled.add(self.textview)
+        self.text_scrolled.set_min_content_height(300)
 
-        # --- Área dos gráficos ---
-        self.figure = Figure(figsize=(8, 4), dpi=100)  # figura mais compacta
+        # === GRAPH WITH ZOOM / PAN TOOLBAR ===
+        from matplotlib.backends.backend_gtk3 import NavigationToolbar2GTK3
+        
+        self.figure = Figure(figsize=(8, 4), dpi=100)
         self.canvas = FigureCanvas(self.figure)
+        self.canvas.set_hexpand(True)
+        self.canvas.set_vexpand(True)
+        
+        # Toolbar for zoom, pan, save, reset
+        self.toolbar = NavigationToolbar2GTK3(self.canvas, self)
+        
+        # Add toolbar first, then graph canvas
+        self.box_main.pack_start(self.toolbar, False, False, 0)
+        self.box_main.pack_start(self.canvas, True, True, 0)
+        
+        # Scroll-wheel zoom function
+        def scroll_zoom(event):
+            # Zoom EACH subplot horizontally (X only)
+            for ax in self.figure.axes:
+                x_min, x_max = ax.get_xlim()
+        
+                # zoom in or out
+                scale = 0.9 if event.step > 0 else 1.1
+                new_width = (x_max - x_min) * scale
+        
+                # cursor X position
+                cx = event.xdata
+                if cx is None:
+                    continue
+                
+                # compute new x-limits centered at cursor
+                ax.set_xlim([cx - new_width / 2, cx + new_width / 2])
+        
+            # redraw
+            self.canvas.draw_idle()
 
-        self.graph_scrolled = Gtk.ScrolledWindow()
-        self.graph_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        self.graph_scrolled.set_min_content_height(300)
-        self.graph_scrolled.set_max_content_height(450)
-        self.graph_scrolled.add(self.canvas)
-
-        # Começa mostrando gráfico
-        self.box_main.pack_start(self.graph_scrolled, True, True, 0)
+        
+        # Attach scroll zoom to the canvas
+        self.canvas.mpl_connect("scroll_event", scroll_zoom)
+        
+        # Add textview below graph (hidden initially)
         self.box_main.pack_start(self.text_scrolled, True, True, 0)
         self.text_scrolled.hide()
 
+
+    ###########################################################################
+    # VIEW TOGGLE
+    ###########################################################################
     def on_toggle_view(self, button):
-        if self.graph_scrolled.get_visible():
-            self.graph_scrolled.hide()
+        if self.canvas.get_visible():
+            self.canvas.hide()
             self.text_scrolled.show()
             self.toggle_button.set_label("Mostrar Gráficos")
         else:
             self.text_scrolled.hide()
-            self.graph_scrolled.show()
+            self.canvas.show()
             self.toggle_button.set_label("Mostrar Mensagem")
 
+    ###########################################################################
+    # DISPLAY TEXT / ERRORS
+    ###########################################################################
     def exibir_resposta(self, texto):
         self.textbuffer.set_text(f"Mensagem recebida do servidor:\n{texto}")
 
     def exibir_erro(self, erro):
         self.textbuffer.set_text(f"Erro ao enviar/receber: {erro}")
 
+    ###########################################################################
+    # BUTTON HANDLER
+    ###########################################################################
     def on_button_clicked(self, widget):
+
         mensagem_original = self.entry.get_text()
         mensagem_bits = ''.join(f'{byte:08b}' for byte in mensagem_original.encode())
 
@@ -149,56 +296,45 @@ class NetworkGUI(Gtk.Window):
         mod_portadora = self.combos[4].get_active_text()
         noise_level = self.noise_spin.get_value()
 
-        samples_per_bit = 20  # quantidade de samples por bit para suavizar o gráfico
+        samples_per_bit = 20
 
-        # Gerar sinais para plotagem e fazer upsample para banda base digital
+        # --- DIGITAL MODULATION ---
         if mod_digital == "NRZ":
-            banda_base_raw = encode_NRZ(mensagem_bits)
-            banda_base = upsample_signal(banda_base_raw, samples_per_bit)
+            banda = upsample_signal(encode_NRZ(mensagem_bits), samples_per_bit)
         elif mod_digital == "bipolar":
-            banda_base_raw = encode_bipolar(mensagem_bits)
-            banda_base = upsample_signal(banda_base_raw, samples_per_bit)
+            banda = upsample_signal(encode_bipolar(mensagem_bits), samples_per_bit)
         elif mod_digital == "manchester":
-            banda_base_raw = encode_manchester(mensagem_bits)
-            banda_base = upsample_signal(banda_base_raw, samples_per_bit)
+            banda = upsample_signal(encode_manchester(mensagem_bits), samples_per_bit)
         elif mod_digital == "16encode_16QAM":
-            banda_base_raw, _ = encode_16QAM(mensagem_bits)
-            # 16encode_16QAM geralmente é sinal complexo, então vamos upsample só o real para plotar (ou converta para módulo se quiser)
-            banda_base = upsample_signal(np.real(banda_base_raw), samples_per_bit)
+            raw, _ = encode_16QAM(mensagem_bits)
+            banda = upsample_signal(np.real(raw), samples_per_bit)
         else:
-            banda_base = []
+            banda = np.array([])
 
-        # Codificação por portadora
+        # --- CARRIER MODULATION ---
         if mod_portadora == "ASK":
-            if isinstance(banda_base, np.ndarray):
-                portadora = encode_ASK(banda_base.tolist())
-            else:
-                portadora = encode_ASK(banda_base)
+            portadora = encode_ASK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
         elif mod_portadora == "FSK":
-            if isinstance(banda_base, np.ndarray):
-                portadora = encode_FSK(banda_base.tolist())
-            else:
-                portadora = encode_FSK(banda_base)
+            portadora = encode_FSK(banda.tolist() if isinstance(banda, np.ndarray) else banda)
         else:
             portadora = None
 
+        # --- DRAW ---
         self.figure.clf()
         ax1 = self.figure.add_subplot(211)
-        ax1.set_title(f"Modulação Digital - {mod_digital}")
-        ax1.plot(banda_base, color='blue')
-        ax1.set_ylabel("Amplitude")
+        ax1.set_title(f"Modulação Digital - {mod_digital}", color="white")
+        ax1.plot(banda, color="#2d8bff")
         ax1.grid(True)
 
         if portadora is not None:
             ax2 = self.figure.add_subplot(212)
-            ax2.set_title(f"Modulação por Portadora - {mod_portadora}")
-            ax2.plot(portadora, color='red')
-            ax2.set_ylabel("Amplitude")
+            ax2.set_title(f"Modulação por Portadora - {mod_portadora}", color="white")
+            ax2.plot(portadora, color="#ff6666")
             ax2.grid(True)
 
         self.canvas.draw()
 
-        # Enviar via socket em thread
+        # --- SEND THREAD ---
         def tarefa():
             try:
                 resposta = transmitir_via_Socket(
@@ -211,12 +347,11 @@ class NetworkGUI(Gtk.Window):
                     noise_level
                 )
 
-                mensagem = resposta["mensagem"]
+                msg = resposta["mensagem"]
                 etapas_tx = resposta.get("etapas_tx", {})
                 etapas_rx = resposta.get("etapas_rx", {})
 
-                texto = f"Mensagem recebida: {mensagem}\n\n"
-                texto += "--- Etapas no Transmissor ---\n"
+                texto = f"Mensagem recebida: {msg}\n\n--- Etapas no Transmissor ---\n"
                 for nome, bits in etapas_tx.items():
                     texto += f"{nome}: {bits[:120]}...\n"
 
@@ -225,13 +360,18 @@ class NetworkGUI(Gtk.Window):
                     texto += f"{nome}: {bits[:120]}...\n"
 
                 GLib.idle_add(self.exibir_resposta, texto)
+
             except Exception as e:
                 GLib.idle_add(self.exibir_erro, str(e))
 
         Thread(target=tarefa, daemon=True).start()
 
 
+###############################################################################
+# MAIN
+###############################################################################
 if __name__ == "__main__":
+
     Thread(
         target=receber_via_Socket,
         args=("contagem", "hamming", "paridade", "NRZ", "ASK"),

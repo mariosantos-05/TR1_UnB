@@ -27,52 +27,43 @@ def decode_NRZ(signal):
             bits.append('0')
     return ''.join(bits)
 
-def decode_manchester(received_signal, samples_per_symbol=100, A_ref=1.0):
+def decode_manchester(signal):
     """
-    Demodula usando correlação com formas de onda de referência Manchester.
-    Gera duas formas de referência (para bit=1 e bit=0) e calcula correlação.
-    Escolhe o bit que dá correlação maior.
-    - A_ref: amplitude de referência das formas (não precisa ser igual ao A do TX, apenas escala)
+    Demodula sinal Manchester.
+    Assume que sinal é lista de níveis com comprimento par,
+    cada bit codificado em dois níveis consecutivos.
+    Retorna string de bits.
     """
-    if samples_per_symbol % 2 != 0:
-        raise ValueError("samples_per_symbol deve ser par para Manchester")
-
-    N = samples_per_symbol
-    half = N // 2
-    # forma referência para bit=1: [+1 ... +1, -1 ... -1] (amplitude A_ref)
-    ref1 = np.concatenate((np.ones(half)*A_ref, np.ones(half)*(-A_ref)))
-    # forma referência para bit=0: [-1 ... -1, +1 ... +1]
-    ref0 = np.concatenate((np.ones(half)*(-A_ref), np.ones(half)*(A_ref)))
-
-    num_bits = len(received_signal) // N
     bits = []
-    for k in range(num_bits):
-        block = received_signal[k*N : (k+1)*N]
-        corr1 = np.dot(block, ref1)  # correlação com ref1
-        corr0 = np.dot(block, ref0)  # correlação com ref0
-        bit = 1 if corr1 > corr0 else 0
-        bits.append(bit)
-    return bits
-
-def decode_bipolar(A,signal, samples_per_bit=100):
-    """
-    Demodulação AMI: integra 100 amostras por bit e detecta 0 ou 1.
-    
-    usar mesma amplitude, ou similar a usada na modulacao (pode estimar na recepcao do sinal)
-    """
-    num_bits = len(signal) // samples_per_bit
-    bits = []
-
-    for i in range(num_bits):
-        segment = signal[i*samples_per_bit:(i+1)*samples_per_bit]
-        avg = np.mean(segment)
-
-        if abs(avg) < 0.3 * A:  # tolerância para ruído
-            bits.append(0)
+    if len(signal) % 2 != 0:
+        raise ValueError("Sinal Manchester deve ter comprimento par")
+    for i in range(0, len(signal), 2):
+        first = signal[i]
+        second = signal[i + 1]
+        # Considerando: transição de alto para baixo = 1, baixo para alto = 0
+        if first > second:
+            bits.append('1')
         else:
-            bits.append(1)
+            bits.append('0')
+    return ''.join(bits)
 
-    return bits
+def decode_bipolar(signal: list[float]) -> str:
+    """
+    Decodificação Bipolar AMI (1 amostra por bit).
+    Níveis:
+      0 → bit 0
+     +1 → bit 1
+     -1 → bit 1
+    """
+    bits = []
+    for s in signal:
+        if abs(s) < 0.5:     # tolerância a ruído
+            bits.append('0')
+        else:
+            bits.append('1')
+
+    return ''.join(bits)
+
 
 def decode_ASK(signal, freq=5, sample_rate=100):
     """
