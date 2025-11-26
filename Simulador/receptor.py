@@ -4,12 +4,12 @@ import pickle
 
 from CamadaFisica.fisica_receptor import (
     decode_NRZ, decode_bipolar, decode_manchester,
-    decode_ASK, decode_FSK, decode_16QAM
+    decode_ASK, decode_FSK,decode_PSK, decode_QPSK,decode_16QAM
 )
 from CamadaEnlace.enlace_receptor import (
     receptor_hamming, verificar_paridade_par, verificar_crc32,
     desenquadrar_contagem_caracteres, desenquadrar_bit_stuffing, desenquadrar_byte_stuffing,
-    remover_bit_paridade, remover_crc_e_padding,
+    remover_bit_paridade, remover_crc_e_padding,verificar_checksum
 )
 
 
@@ -50,23 +50,31 @@ class Receptor:
         
         return dados_str
 
-    def _demodular_portadora(self, dados: List[int]) -> List[int]:
-        """Demodulação da portadora"""
+    def _demodular_portadora(self, dados):
+
+        if self.mod_portadora == "QPSK":
+            return decode_QPSK(dados)
+        if self.mod_portadora == "16QAM":
+            return decode_16QAM(dados)
+
         if self.mod_portadora == "ASK":
-            print("recebendo ASK")
             return decode_ASK(dados)
-        elif self.mod_portadora == "FSK":
-            print("recebendo FSK")
+        if self.mod_portadora == "FSK":
             return decode_FSK(dados)
+        if self.mod_portadora == "PSK":
+            return decode_PSK(dados)
+
         return dados
 
     def _demodular_digital(self, dados: List[int]) -> List[int]:
-        """Demodulação digital"""
+        if self.mod_portadora == "QPSK":
+            return dados  
+        if self.mod_portadora == "16QAM":
+            return dados  
         demoduladores = {
             "NRZ": (decode_NRZ, "recebendo NRZ"),
             "bipolar": (decode_bipolar, "recebendo bipolar"),
             "manchester": (decode_manchester, "recebendo manchester"),
-            "16QAM": (decode_16QAM, "recebendo 16QAM")
         }
         
         if self.mod_digital in demoduladores:
@@ -104,6 +112,19 @@ class Receptor:
                 etapas_rx["removido_crc"] = dados_sem_crc
                 print("[DEBUG] Tamanho depois de remover CRC:", len(dados_sem_crc))
                 return dados_sem_crc
+            
+        elif self.deteccao == "checksum":
+            ok, dados_sem_checksum = verificar_checksum(dados)
+            if not ok:
+                print("[ERRO] Checksum inválido. Descartando quadro.")
+                # Não continue pipeline com dados corrompidos
+                etapas_rx["erro_checksum"] = dados
+                return None  # <-- o jeito certo de indicar falha
+            else:
+                print("[DEBUG] Checksum verificado com sucesso.")
+                etapas_rx["removido_checksum"] = dados_sem_checksum
+                return dados_sem_checksum
+                
         
         return dados
 

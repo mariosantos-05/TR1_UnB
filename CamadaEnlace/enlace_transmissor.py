@@ -138,81 +138,73 @@ def adicionar_paridade_par(bits_dados: str) -> str:
     [DADOS] + [BIT_PARIDADE]
     """
 
-    if len(bits_dados) % 8 != 0:
-        padding = 8 - (len(bits_dados) % 8)
-        bits_dados = '0' * padding + bits_dados
+    #if len(bits_dados) % 8 != 0:
+    #    padding = 8 - (len(bits_dados) % 8)
+    #    bits_dados = '0' * padding + bits_dados
 
     print(f"[TX-Detecção] Paridade Par: Aplicando...")
     paridade = 0
     for bit in bits_dados:
         paridade ^= int(bit)
 
-    return bits_dados + str(paridade)
+    return bits_dados + ('1' if paridade else '0')
 
 
 def adicionar_checksum(bits_dados: str) -> str:
     """
-    Calcula o Checksum (Soma de Verificação) em blocos de 8 bits
-    usando aritmética de complemento de um (one's complement) e anexa ao final.
-    [DADOS] + [CHECKSUM (8 bits)]
-    
-    Usa _bits_para_lista_de_bytes para o alinhamento inicial.
+    Calcula um checksum 8-bit usando soma de complemento de 1,
+    sem adicionar qualquer padding.
     """
-    print(f"[TX-Detecção] Checksum 8-bit: Calculando...")
-    
-    # 1. Alinha os dados para blocos de 8 bits usando a função auxiliar
-    # (Adiciona padding '0' à esquerda e retorna lista de inteiros)
-    lista_bytes_dados = _bits_para_lista_de_bytes(bits_dados)
-        
+    print("[TX-Detecção] Checksum 8-bit: Calculando...")
+
+    # Se necessário, aplicar padding deve ser feito FORA desta função, consistentemente no TX e RX.
+    # Aqui NÃO adicionamos padding, apenas trabalhamos com os bits existentes.
+
+    # 1. Se não for múltiplo de 8, completar à direita com zeros (não à esquerda).
+    #    Isso mantém o alinhamento e não altera o conteúdo sem controle.
+    if len(bits_dados) % 8 != 0:
+        falta = 8 - (len(bits_dados) % 8)
+        bits_dados = bits_dados + ('0' * falta)
+
     soma = 0
-    
-    # 2. Soma os blocos de 8 bits (como inteiros)
-    for byte in lista_bytes_dados:
-        soma += byte
-        
-    # 3. Trata o "carry" (enrola o estouro - característica do complemento de 1)
+
+    # 2. Soma os bytes
+    for i in range(0, len(bits_dados), 8):
+        byte = bits_dados[i:i+8]
+        soma += int(byte, 2)
+
+    # 3. Compacta os carries
     while (soma >> 8) > 0:
         soma = (soma & 0xFF) + (soma >> 8)
-        
-    # 4. O checksum é o complemento de 1 da soma final
+
+    # 4. Complemento de 1
     checksum = (~soma) & 0xFF
-    
     checksum_bits = format(checksum, '08b')
-    
-    # Converte os dados (com padding) de volta para string de bits para concatenação
-    dados_formatados = _lista_de_bytes_para_bits(lista_bytes_dados)
-    
-    return dados_formatados + checksum_bits
+
+    return bits_dados + checksum_bits
+
 
 
 POLI = 0x104C11DB7
 
-def crc32(bits_str: str) -> tuple[str, int]:
+def crc32(bits_str: str) -> str:
     """
-    Aplica padding específico (<64 bits) e calcula o CRC-32 (IEEE 802.3).
-    O cálculo usa divisão bitwise/aritmética.
-    Retorna: (mensagem_final_com_crc, tamanho_do_padding)
+    Calcula CRC-32 sem depender de pad_len (padding fixo de 64 bits).
     """
-    pad_len = max(0, 64 - len(bits_str))
-    padding = "".join(str(i % 2) for i in range(pad_len))
+    padding = "0" * 64                     # <= padding fixo
     dados_padded = bits_str + padding
-    
-    # Prepara dados para divisão: converte para inteiro e adiciona 32 zeros
+
     data_int = int(dados_padded, 2) << 32
-    
-    # 2. Loop de divisão polinomial
-    highest_bit = data_int.bit_length() - 1 if data_int != 0 else 0
-    
+
+    highest_bit = data_int.bit_length() - 1
     for i in range(highest_bit, 31, -1):
         if (data_int >> i) & 1:
             data_int ^= POLI << (i - 32)
 
-    # O resto são os 32 bits menos significativos (o CRC)
     crc_val = data_int & 0xFFFFFFFF
-    
-    crc_str = format(crc_val, '032b')
-    
-    return dados_padded + crc_str, pad_len
+    crc_str = format(crc_val, "032b")
+
+    return dados_padded + crc_str
 
 
 # -------------------------------------------------------------------

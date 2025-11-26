@@ -5,10 +5,10 @@ import socket
 
 from CamadaFisica.fisica_transmissor import (
     encode_NRZ, encode_bipolar, encode_manchester,
-    encode_ASK, encode_FSK, encode_16QAM
+    encode_ASK, encode_FSK, encode_PSK, encode_QPSK, encode_16QAM,
 )
 from CamadaEnlace.enlace_transmissor import (
-    transmissor_hamming, adicionar_paridade_par, crc32,
+    transmissor_hamming, adicionar_paridade_par, crc32,adicionar_checksum,
     enquadrar_contagem_caracteres, enquadrar_bit_stuffing, enquadrar_byte_stuffing
 )
 
@@ -91,11 +91,19 @@ class Transmissor:
             print("[DEBUG TX] Após adição de bit de paridade:", dados_paridade)
             return dados_paridade
         
-        elif self.deteccao == "crc32":
+        elif self.deteccao == "crc":
             print("[DEBUG TX] Tamanho pré crc32:", len(dados))
             dados_crc = crc32(dados)
+            print("[DEBUG] DADOS ENTRADA :", dados)
+            print("[DEBUG] DADOS CRC     :", dados_crc)
+            print("[DEBUG] LEN ANTES     :", len(dados))
+            print("[DEBUG] LEN DEPOIS    :", len(dados_crc))
             print("[DEBUG TX] Após adição de crc32:", dados_crc)
             return dados_crc
+        elif self.deteccao == "checksum":
+            dados_checksum = adicionar_checksum(dados)
+            return dados_checksum
+            
         
         return dados
 
@@ -103,31 +111,34 @@ class Transmissor:
         """Aplica ruído e registra o resultado"""
         dados_com_ruido = self.aplicar_ruido(dados)
         etapas["com_ruido"] = dados_com_ruido
-        print(f"[DEBUG TX] Após simulação de ruído (nível = {self.noise_level}):", dados_com_ruido)
+        #print(f"[DEBUG TX] Após simulação de ruído (nível = {self.noise_level}):", dados_com_ruido)
         return dados_com_ruido
 
     def _processar_modulacao(self, dados: str, etapas: dict) -> List[float]:
-        """Processa modulação digital e de portadora"""
-        # Modulação digital
-        moduladores_digital = {
-            "NRZ": (encode_NRZ, "NRZ"),
-            "bipolar": (encode_bipolar, "bipolar"),
-            "manchester": (encode_manchester, "manchester"),
-            "8QAM": (encode_16QAM, "8QAM")
-        }
 
-        if self.mod_digital in moduladores_digital:
-            mod_func, mod_name = moduladores_digital[self.mod_digital]
-            resultado = mod_func(dados)
-            print(f"[DEBUG TX] Modulação digital {mod_name} realizada")
+        # Se a modulação de portadora for QPSK, NÃO modula digitalmente antes
+        if self.mod_portadora == "QPSK":
+            resultado = dados  # mantém bits puros
+        if self.mod_portadora == "16QAM":
+            resultado = dados  # mantém bits puros
         else:
-            resultado = dados
+            moduladores_digital = {
+                "NRZ": (encode_NRZ, "NRZ"),
+                "bipolar": (encode_bipolar, "bipolar"),
+                "manchester": (encode_manchester, "manchester"),
+            }
 
-        # Modulação de portadora (apenas se não for 8QAM)
-        if self.mod_digital != "8QAM":
-            resultado = self._aplicar_modulacao_portadora(resultado)
+            if self.mod_digital in moduladores_digital:
+                mod_func, mod_name = moduladores_digital[self.mod_digital]
+                resultado = mod_func(dados)
+                print(f"[DEBUG TX] Modulação digital {mod_name} realizada")
+            else:
+                resultado = dados
 
+        # Agora sim aplica modulação de portadora
+        resultado = self._aplicar_modulacao_portadora(resultado)
         return resultado
+
 
     def _aplicar_modulacao_portadora(self, dados: List[float]) -> List[float]:
         """Aplica modulação de portadora"""
@@ -137,6 +148,14 @@ class Transmissor:
         elif self.mod_portadora == "FSK":
             resultado = encode_FSK(dados)
             print("[DEBUG TX] Modulação portadora FSK realizada")
+        elif self.mod_portadora == "PSK":
+            resultado = encode_PSK(dados)
+            print("[DEBUG TX] Modulação portadora PSK realizada")
+        elif self.mod_portadora == "QPSK":
+            resultado = encode_QPSK(dados)
+            print("[DEBUG TX] Modulação portadora QPSK realizada")
+        elif self.mod_portadora == "16QAM":
+            resultado = encode_16QAM(dados)
         else:
             resultado = dados
         

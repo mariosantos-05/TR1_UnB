@@ -6,11 +6,11 @@ from Simulador.transmissor import transmitir_via_Socket
 
 
 def main():
-    ENQ = "contagem"
-    COR = "hamming"
-    DET = "crc"
-    MOD_DIG = "NRZ"
-    MOD_POR = "ASK"
+    ENQ = "contagem" #todos funcionando! 
+    COR = "hamming"  #apenas hamming ok! 
+    DET = "paridade" #todos funcionando
+    MOD_DIG = "NRZ"   # 
+    MOD_POR = "QPSK" # todos funcionando
     NOISE = 0.0
 
     
@@ -24,7 +24,7 @@ def main():
     time.sleep(1)
 
     # Mensagem a enviar
-    mensagem = "Hello Mundo! Testando comunicação via socket."
+    mensagem = "Hello Mundo! Testando comunicação via socket👆."
 
     print("\n=== TRANSMISSOR ENVIANDO ===\n")
     resposta = transmitir_via_Socket(

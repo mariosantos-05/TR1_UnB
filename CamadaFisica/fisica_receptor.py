@@ -90,100 +90,94 @@ def decode_ASK(signal, freq=5, sample_rate=100):
         # Produto interno (correlação) para estimar amplitude
         correlacao = np.dot(segmento, portadora)
         # Normaliza (opcional)
-        amplitude_estimada = correlacao / sample_rate
+        amplitude_estimada = (correlacao / sample_rate) *2
         banda_base.append(amplitude_estimada)
 
     return banda_base
 
 
 #receiveis a signal sequence that corresponds to one symbol. to online decifration
-def decode_FSK(signal, A = 1,f1 = 5 ,f2=10):
-    samples_per_bit = 100
-    signal1 = np.zeros(samples_per_bit)
-    signal2 = np.zeros(samples_per_bit)
-    
-    corf1 = 0
-    corf2 = 0
-    for i in range(samples_per_bit):
-        signal1[i] = A *  math.sin(2*math.pi*f1*i/samples_per_bit)
-        signal2[i] = A *  math.sin(2*math.pi*f2*i/samples_per_bit)
-        
-        corf1 += signal1[i] * signal[i]
-        corf2 += signal2[i] * signal[i]
-    
-    if corf1 > corf2:
-        bit = 1
-    else:
-        bit = 0
-        
-    return bit 
-        
-def PSK_demodulation(signal, f=5):
-    sig_size = len(signal)
-    
-    t = np.arange(sig_size)/sig_size
-    reference = np.sin(2*np.pi*f*t)
-    
-    corr = np.sum(np.array(signal)*reference)
-    
-    if corr > 0:
-        bit = 1 
-    else:
-        bit = 0
-    
-    return bit
-
-    
-def QPSK_demodulation(rx_signal, f=5.0, samples_per_symbol=100):
+def decode_FSK(signal, f1=5, f2=10, sample_rate=100):
     """
-    QPSK demodulator (coherent correlator):
-      - rx_signal: received samples (numpy array)
-      - f: carrier frequency (same units as modulator's f)
-      - samples_per_symbol: samples per symbol (must match modulator)
-    Returns: list of recovered bits [b0,b1,b0,b1,...]
+    Demodula um sinal FSK e retorna os bits detectados (0 ou 1).
     """
-    N = samples_per_symbol
-    num_symbols = len(rx_signal) // N
+    num_symbols = len(signal) // sample_rate
+    bits = []
 
-    t = np.arange(N) / N
-    cos_carrier = np.cos(2 * np.pi * f * t)
-    sin_carrier = np.sin(2 * np.pi * f * t)
+    # sinais referencia (portadoras f1 e f2)
+    t = np.linspace(0, 1, sample_rate, endpoint=False)
+    portadora1 = np.sin(2 * np.pi * f1 * t)  # bit 1
+    portadora0 = np.sin(2 * np.pi * f2 * t)  # bit 0
 
-    bits_out = []
+    for i in range(num_symbols):
+        segmento = signal[i * sample_rate : (i + 1) * sample_rate]
 
-    for k in range(num_symbols):
-        block = rx_signal[k*N : (k+1)*N]
+        # Correlação com cada portadora
+        cor1 = np.dot(segmento, portadora1)
+        cor0 = np.dot(segmento, portadora0)
 
-        # Correlate with cos to get I*energy (approx)
-        I_corr = np.dot(block, cos_carrier)
+        # Decide o bit
+        bit = 1 if cor1 > cor0 else 0
+        bits.append(bit)
 
-        # Because transmitter used "- Q*sin", correlate with -sin to get Q positive when Q_sym>0:
-        Q_corr = -np.dot(block, sin_carrier)
+    return bits
 
-        # Decide sign -> map back to bits using same mapping used in modulation
-        # We didn't normalize by energy because we only need sign, not magnitude.
-        I_pos = 1 if I_corr > 0 else -1
-        Q_pos = 1 if Q_corr > 0 else -1
+        
+def decode_PSK(signal, f=5, sample_rate=100):
 
-        # inverse of mapping:
-        # (I,Q) -> bits:
-        # (+1, +1) -> (0,0)
-        # (-1, +1) -> (0,1)
-        # (-1, -1) -> (1,1)
-        # (+1, -1) -> (1,0)
-        if (I_pos, Q_pos) == (1, 1):
-            bits_out.extend([0, 0])
-        elif (I_pos, Q_pos) == (-1, 1):
-            bits_out.extend([0, 1])
-        elif (I_pos, Q_pos) == (-1, -1):
-            bits_out.extend([1, 1])
-        elif (I_pos, Q_pos) == (1, -1):
-            bits_out.extend([1, 0])
-        else:
-            # fallback - shouldn't happen
-            bits_out.extend([0,0])
+    num_symbols = len(signal) // sample_rate
+    bits = []
 
-    return bits_out
+    t = np.linspace(0, 1, sample_rate, endpoint=False)
+    portadora = np.sin(2 * np.pi * f * t)
+
+    for i in range(num_symbols):
+        segmento = signal[i * sample_rate : (i + 1) * sample_rate]
+
+        # correlação com a portadora
+        corr = np.dot(segmento, portadora)
+
+        # PSK: sinal positivo → fase 0 → bit 1
+        #      sinal negativo → fase π → bit 0
+        bit = 1 if corr > 0 else 0
+        bits.append(bit)
+
+    return bits
+
+
+    
+def decode_QPSK(signal, f=1.0):
+
+    num_symbols = len(signal)//100
+    bits = []
+
+    for i in range(num_symbols):
+
+        I_hat = 0
+        Q_hat = 0
+
+        for j in range(100):
+            t = j/100
+            sample = signal[i*100+j]
+            I_hat += sample * math.cos(2*math.pi*f*t)
+            Q_hat += sample * math.sin(2*math.pi*f*t)
+
+        # Decide sinal
+        I = 1 if I_hat >= 0 else -1
+        Q = 1 if Q_hat >= 0 else -1
+
+        # Desfaz o mapa
+        demap = {
+            (1,1)   : [0,0],
+            (-1,1)  : [0,1],
+            (-1,-1) : [1,1],
+            (1,-1)  : [1,0]
+        }
+
+        bits += demap[(I,Q)]
+
+    return bits
+
 
 
 # Gray table 16-QAM
@@ -207,40 +201,34 @@ gray_map = {
 }
 
 
-def decode_16QAM(signal, f = 5.0):
+def decode_16QAM(signal, f=1.0, samples_per_symbol=100):
 
-    num_symbols = len(signal)//100
+    num_symbols = len(signal) // samples_per_symbol
     bit_stream = []
 
-    # Níveis possíveis
+    t = np.arange(samples_per_symbol) / samples_per_symbol
+    cos_carrier = np.cos(2 * np.pi * f * t)
+    sin_carrier = np.sin(2 * np.pi * f * t)
+
     levels = np.array([-3, -1, 1, 3])
 
     for i in range(num_symbols):
+        start = i * samples_per_symbol
+        block = signal[start:start+samples_per_symbol]
 
-        # correlação
-        I_hat = 0
-        Q_hat = 0
+        # Correlação para extrair I e Q
+        I_hat = np.dot(block, cos_carrier) * 2 / samples_per_symbol
+        Q_hat = np.dot(block, sin_carrier) * 2 / samples_per_symbol
 
-        for j in range(100):
-            t = j/100
-            sample = signal[i*100+j]
+        # Decisão por mínima distância
+        I_dec = levels[np.argmin(np.abs(levels - I_hat))]
+        Q_dec = levels[np.argmin(np.abs(levels - Q_hat))]
 
-            I_hat += sample * math.cos(2*math.pi*f*t)
-            Q_hat += sample * math.sin(2*math.pi*f*t)
-        
-        I_hat = I_hat/50
-        Q_hat = Q_hat/50
-        print(I_hat)
-        print(Q_hat)
-        # Decide para qual nível está mais próximo
-        I_dec = levels[np.argmin(abs(levels - I_hat))]
-        Q_dec = levels[np.argmin(abs(levels - Q_hat))]
-
-        # Convert back to bits
         bits = gray_map[(I_dec, Q_dec)]
-        bit_stream += bits
+        bit_stream.extend(bits)
 
     return bit_stream
+
 
 
     
