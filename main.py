@@ -14,12 +14,16 @@ matplotlib.use('GTK4Agg')
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_gtk4agg import FigureCanvasGTK4Agg as FigureCanvas
 
-# --- IMPORTS DO SIMULADOR ---
-from CamadaFisica.modulacao_demodulacao_digital import (
-    encode_NRZ, encode_bipolar, encode_manchester, encode_8QAM,
-    encode_ASK, encode_FSK,
-    decode_NRZ, decode_bipolar, decode_manchester, decode_8QAM,
-    decode_ASK, decode_FSK
+from Simulador.receptor import Receptor
+from Simulador.transmissor import Transmissor
+
+from CamadaFisica.fisica_transmissor import (
+    encode_NRZ, encode_bipolar, encode_manchester,
+    encode_ASK, encode_FSK, encode_16QAM
+)
+from CamadaFisica.fisica_receptor import (
+    decode_NRZ, decode_bipolar, decode_manchester,
+    decode_ASK, decode_FSK, decode_16QAM
 )
 from CamadaEnlace.enlace_transmissor import (
     transmissor_hamming, adicionar_paridade_par, crc32,
@@ -88,10 +92,10 @@ class Transmissor:
             resultado = encode_bipolar(dados)
         elif self.mod_digital=="manchester":
             resultado = encode_manchester(dados)
-        elif self.mod_digital=="8QAM":
-            resultado = encode_8QAM(dados)
+        elif self.mod_digital=="16QAM":
+            resultado = encode_16QAM(dados)
 
-        if self.mod_digital!="8QAM":
+        if self.mod_digital!="16QAM":
             if self.mod_portadora=="ASK":
                 resultado = encode_ASK(resultado)
             elif self.mod_portadora=="FSK":
@@ -114,7 +118,7 @@ class Receptor:
         etapas_rx = {"recebido": dados.copy()}
 
         # --- Demodulação Portadora ---
-        if self.mod_digital != "8QAM":
+        if self.mod_digital != "16QAM":
             if self.mod_portadora=="ASK":
                 dados = decode_ASK(dados)
             elif self.mod_portadora=="FSK":
@@ -127,8 +131,8 @@ class Receptor:
             dados = decode_bipolar(dados)
         elif self.mod_digital=="manchester":
             dados = decode_manchester(dados)
-        elif self.mod_digital=="8QAM":
-            dados = decode_8QAM(dados)
+        elif self.mod_digital=="16QAM":
+            dados = decode_16QAM(dados)
         etapas_rx["demodulado"] = dados
 
         dados = ''.join(map(str,dados))
@@ -243,7 +247,7 @@ class NetworkGUI(Gtk.ApplicationWindow):
             ["contagem", "bit-stuffing", "byte-stuffing"],
             ["hamming", "nenhuma"],
             ["paridade", "crc", "nenhuma"],
-            ["NRZ", "bipolar", "manchester", "8QAM"],
+            ["NRZ", "bipolar", "manchester", "16QAM"],
             ["ASK", "FSK", "nenhuma"]
         ]
         self.dropdowns = []
@@ -332,14 +336,39 @@ Mensagem recebida: "{resposta['mensagem']}"
 """
             GLib.idle_add(self.exibir_resposta, texto.strip())
 
-            # --- Gráfico ---
-            t = np.linspace(0, 1, len(resposta['sinal_tx']))
+            # --- Gráfico com Múltiplas Visualizações ---
+            sinal_tx = resposta['sinal_tx']
+            t = np.linspace(0, len(sinal_tx) / 1000, len(sinal_tx))
+            
             self.figure.clf()
-            ax = self.figure.add_subplot(111)
-            ax.plot(t, resposta['sinal_tx'], color='#2d8bff')
-            ax.set_title(f"Sinal Transmitido ({mod_digital}+{mod_portadora})", color="white")
-            ax.grid(True, linestyle='--', alpha=0.4)
-            ax.tick_params(colors="lightgray")
+            self.figure.patch.set_facecolor('#1d232f')
+            
+            # Criar subplots
+            ax1 = self.figure.add_subplot(211)  # Sinal completo
+            ax2 = self.figure.add_subplot(212)  # Zoom nas primeiras amostras
+            
+            # Configurar fundo dos subplots
+            for ax in [ax1, ax2]:
+                ax.set_facecolor('#1d232f')
+                ax.tick_params(colors='lightgray')
+                for spine in ax.spines.values():
+                    spine.set_color('lightgray')
+                ax.grid(True, linestyle='--', alpha=0.3, color='lightgray')
+            
+            # Plot 1: Sinal completo
+            ax1.plot(t, sinal_tx, color='#2d8bff', linewidth=1, alpha=0.8)
+            ax1.set_title(f"Sinal Transmitido Completo - {mod_digital} + {mod_portadora}", 
+                         color='white', fontsize=12, pad=10)
+            ax1.set_ylabel('Amplitude', color='lightgray')
+            
+            # Plot 2: Zoom nas primeiras amostras
+            zoom_samples = min(200, len(sinal_tx))  # Mostrar até 200 amostras
+            if zoom_samples > 0:
+                ax2.plot(t[:zoom_samples], sinal_tx[:zoom_samples], color='#ff6b6b', linewidth=1.5)
+                ax2.set_title("Zoom: Primeiras Amostras", color='white', fontsize=12, pad=10)
+                ax2.set_xlabel('Tempo (s)', color='lightgray')
+                ax2.set_ylabel('Amplitude', color='lightgray')
+            
             self.figure.tight_layout()
             GLib.idle_add(self.canvas.draw)
 

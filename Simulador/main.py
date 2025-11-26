@@ -24,7 +24,7 @@ def main():
     time.sleep(1)
 
     # Mensagem a enviar
-    mensagem = "Hello Mundo! Testando comunicação 😎"
+    mensagem = "Hello Mundo! Testando comunicação via socket."
 
     print("\n=== TRANSMISSOR ENVIANDO ===\n")
     resposta = transmitir_via_Socket(

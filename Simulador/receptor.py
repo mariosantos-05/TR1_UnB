@@ -1,20 +1,21 @@
 from typing import List
+import socket
+import pickle
 
-from CamadaFisica.modulacao_demodulacao_digital import (
+from CamadaFisica.fisica_receptor import (
     decode_NRZ, decode_bipolar, decode_manchester,
-    decode_ASK, decode_FSK, decode_8QAM
+    decode_ASK, decode_FSK, decode_16QAM
 )
 from CamadaEnlace.enlace_receptor import (
     receptor_hamming, verificar_paridade_par, verificar_crc32,
     desenquadrar_contagem_caracteres, desenquadrar_bit_stuffing, desenquadrar_byte_stuffing,
-    remover_bit_paridade, remover_crc_e_padding, 
+    remover_bit_paridade, remover_crc_e_padding,
 )
 
-import socket
-import pickle
 
 class Receptor:
-    def __init__(self, enquadramento="contagem", correcao="hamming", deteccao="crc", mod_digital="NRZ", mod_portadora="ASK"):
+    def __init__(self, enquadramento="contagem", correcao="hamming", 
+                 deteccao="crc", mod_digital="NRZ", mod_portadora="ASK"):
         self.enquadramento = enquadramento
         self.correcao = correcao
         self.deteccao = deteccao
@@ -23,102 +24,129 @@ class Receptor:
 
     def processar(self, dados: List[int]) -> str:
         print("\n[DEBUG] --- Início do processamento no receptor ---")
-
-        etapas_rx = {"recebido": dados}
         
-        if self.mod_digital != "8QAM":
-            # entra lista de floats...
-            if self.mod_portadora == "ASK":
-                dados = decode_ASK(dados)
-                print("recebdno ASK")
-            elif self.mod_portadora == "FSK":
-                dados = decode_FSK(dados)
-                print("recebendo FSK")
-            # sai lista de floats...
+        etapas_rx = {"recebido": dados}
+        dados = self._processar_demodulacao(dados, etapas_rx)
+        dados = self._processar_deteccao_correcao(dados, etapas_rx)
+        dados = self._processar_desenquadramento(dados, etapas_rx)
+        
+        self.etapas_rx = etapas_rx
+        print("[DEBUG] --- Fim do processamento no receptor ---\n")
+        return dados
+
+    def _processar_demodulacao(self, dados: List[int], etapas_rx: dict) -> str:
+        """Processa demodulação de portadora e digital"""
+        if self.mod_digital != "16QAM":
+            dados = self._demodular_portadora(dados)
             print(f"[DEBUG] Após demodulação portadora {self.mod_portadora}: {dados}")
-        # 1. Demodulação
-        # entra lista de floats...
-        if self.mod_digital == "NRZ":
-            dados = decode_NRZ(dados)
-            print("recebendo NRZ")
-        elif self.mod_digital == "bipolar":
-            dados = decode_bipolar(dados)
-            print("recebendo bipolar")
-        elif self.mod_digital == "manchester":
-            dados = decode_manchester(dados)
-            print("recebendo manchester")
-        elif self.mod_digital == "8QAM":
-            dados = decode_8QAM(dados)
-            print("recebendo 8QAM")
+
+        dados = self._demodular_digital(dados)
         etapas_rx["demodulado"] = dados
-        # sai string de bits...
-
-        print(f"[DEBUG] Após demodulação digital ou 8QAM -> {self.mod_digital}: {dados}")
-
+        
         # Transforma lista de bits em string
-        dados = ''.join(map(str, dados))
-        etapas_rx["bits_puros"] = dados
-        print("[DEBUG] Em string de bits:", dados)
-# ---> Até aqui Deus nos ajudou, depois ta dando erro no hamming
+        dados_str = ''.join(map(str, dados))
+        etapas_rx["bits_puros"] = dados_str
+        print("[DEBUG] Em string de bits:", dados_str)
+        
+        return dados_str
 
-        # 2. Detecção e correção de erros
+    def _demodular_portadora(self, dados: List[int]) -> List[int]:
+        """Demodulação da portadora"""
+        if self.mod_portadora == "ASK":
+            print("recebendo ASK")
+            return decode_ASK(dados)
+        elif self.mod_portadora == "FSK":
+            print("recebendo FSK")
+            return decode_FSK(dados)
+        return dados
+
+    def _demodular_digital(self, dados: List[int]) -> List[int]:
+        """Demodulação digital"""
+        demoduladores = {
+            "NRZ": (decode_NRZ, "recebendo NRZ"),
+            "bipolar": (decode_bipolar, "recebendo bipolar"),
+            "manchester": (decode_manchester, "recebendo manchester"),
+            "16QAM": (decode_16QAM, "recebendo 16QAM")
+        }
+        
+        if self.mod_digital in demoduladores:
+            demod_func, debug_msg = demoduladores[self.mod_digital]
+            print(debug_msg)
+            dados = demod_func(dados)
+            print(f"[DEBUG] Após demodulação digital {self.mod_digital}: {dados}")
+        
+        return dados
+
+    def _processar_deteccao_correcao(self, dados: str, etapas_rx: dict) -> str:
+        """Processa detecção e correção de erros"""
+        dados = self._aplicar_deteccao_erros(dados, etapas_rx)
+        dados = self._aplicar_correcao_erros(dados, etapas_rx)
+        print("[DEBUG] Após correção e remoção de bits extras:", dados)
+        return dados
+
+    def _aplicar_deteccao_erros(self, dados: str, etapas_rx: dict) -> str:
+        """Aplica detecção de erros (paridade ou CRC)"""
         if self.deteccao == "paridade":
             if not verificar_paridade_par(dados):
                 print("[DEBUG] Erro de paridade detectado.")
             etapas_rx["removido_paridade"] = dados
-            dados = remover_bit_paridade(dados)
+            return remover_bit_paridade(dados)
 
         elif self.deteccao == "crc":
             if not verificar_crc32(dados):
                 print("[DEBUG] Erro de CRC detectado. Aplicando Hamming.")
-                dados = remover_crc_e_padding(dados)
-                print("[DEBUG] Tamanho depois de remover CRC:", len(dados))
-
+                dados_sem_crc = remover_crc_e_padding(dados)
+                print("[DEBUG] Tamanho depois de remover CRC:", len(dados_sem_crc))
+                return dados_sem_crc
             else:
                 print("[DEBUG] CRC verificado com sucesso.")
-                dados = remover_crc_e_padding(dados)
-                etapas_rx["removido_crc"] = dados
-                print("[DEBUG] Tamanho depois de remover CRC:", len(dados))
-
-        if self.correcao == "hamming":
-            dados = receptor_hamming(dados)
-            etapas_rx["corrigido_hamming"] = dados
-            print("[DEBUG] Tamanho depois de remover Hamming:", len(dados))
-            #remover_bits_hamming(dados)
-
-
-
-        print("[DEBUG] Após correção e remoção de bits extras:", dados)
-
-        # 3. Desenquadramento
-        if self.enquadramento == "contagem":
-            dados = desenquadrar_contagem_caracteres(dados)
-            print("contagem")
-        elif self.enquadramento == "bit-stuffing":
-            dados = desenquadrar_bit_stuffing(dados)
-            print("bit-stuffing")
-        elif self.enquadramento == "byte-stuffing":
-            dados = desenquadrar_byte_stuffing(dados)
-            print("byte-stuffing")
-
-        etapas_rx["desenquadrado"] = dados
-
-        print(f"[DEBUG] Após desenquadramento {self.enquadramento}: {dados}")
-        print("[DEBUG] --- Fim do processamento no receptor ---\n")
-
-        self.etapas_rx = etapas_rx  # armazena as etapas para uso posterior
-
+                dados_sem_crc = remover_crc_e_padding(dados)
+                etapas_rx["removido_crc"] = dados_sem_crc
+                print("[DEBUG] Tamanho depois de remover CRC:", len(dados_sem_crc))
+                return dados_sem_crc
+        
         return dados
 
-def bits_para_bytes(bit_str):
-    #assert len(bit_str) % 8 == 0
+    def _aplicar_correcao_erros(self, dados: str, etapas_rx: dict) -> str:
+        """Aplica correção de erros (Hamming)"""
+        if self.correcao == "hamming":
+            dados_corrigidos = receptor_hamming(dados)
+            etapas_rx["corrigido_hamming"] = dados_corrigidos
+            print("[DEBUG] Tamanho depois de remover Hamming:", len(dados_corrigidos))
+            return dados_corrigidos
+        return dados
+
+    def _processar_desenquadramento(self, dados: str, etapas_rx: dict) -> str:
+        """Processa desenquadramento"""
+        desenquadradores = {
+            "contagem": (desenquadrar_contagem_caracteres, "contagem"),
+            "bit-stuffing": (desenquadrar_bit_stuffing, "bit-stuffing"),
+            "byte-stuffing": (desenquadrar_byte_stuffing, "byte-stuffing")
+        }
+        
+        if self.enquadramento in desenquadradores:
+            desenquad_func, debug_msg = desenquadradores[self.enquadramento]
+            print(debug_msg)
+            dados_desenquadrados = desenquad_func(dados)
+            etapas_rx["desenquadrado"] = dados_desenquadrados
+            print(f"[DEBUG] Após desenquadramento {self.enquadramento}: {dados_desenquadrados}")
+            return dados_desenquadrados
+        
+        return dados
+
+
+def bits_para_bytes(bit_str: str) -> bytes:
+    """Converte string de bits para bytes"""
     byte_list = [
         int(bit_str[i:i+8], 2)
         for i in range(0, len(bit_str), 8)
     ]
     return bytes(byte_list)
 
-def receber_via_Socket(enquadramento: str, correcao: str, deteccao: str, mod_digital: str, mod_portadora: str):
+
+def receber_via_socket(enquadramento: str, correcao: str, deteccao: str, 
+                      mod_digital: str, mod_portadora: str) -> None:
+    """Recebe dados via socket e processa com o receptor"""
     HOST = 'localhost'  
     PORT = 5000
 
@@ -132,7 +160,6 @@ def receber_via_Socket(enquadramento: str, correcao: str, deteccao: str, mod_dig
         print(f"[Receptor] Conectado a {addr}")
 
         dados_completos = b''
-
         while True:
             parte = conn.recv(1024)
             if not parte:
@@ -141,32 +168,39 @@ def receber_via_Socket(enquadramento: str, correcao: str, deteccao: str, mod_dig
 
         pacotao = pickle.loads(dados_completos)
         sinal_recebido = pacotao["msg"]
+        
         print(f'Tamanho sinal recebido: {len(sinal_recebido)}')
         print(sinal_recebido)
 
-        rx = Receptor(pacotao["enq"], pacotao["cor"], pacotao["det"], pacotao["mod_dig"], pacotao["mod_por"])
+        rx = Receptor(pacotao["enq"], pacotao["cor"], pacotao["det"], 
+                     pacotao["mod_dig"], pacotao["mod_por"])
         mensagem_recebida = rx.processar(sinal_recebido)
+        
         print(f'Tamanho mensagem recebida: {len(mensagem_recebida)}')
         print(mensagem_recebida)
 
-        mensagem_recebida = bits_para_bytes(mensagem_recebida)
-        print(mensagem_recebida)
+        mensagem_bytes = bits_para_bytes(mensagem_recebida)
+        print(mensagem_bytes)
 
         try:
-            mensagem_recebida = mensagem_recebida.decode('utf-8')
+            mensagem_decodificada = mensagem_bytes.decode('utf-8')
         except UnicodeDecodeError:
             print("[WARNING] Erro ao decodificar UTF-8, substituindo bytes inválidos.")
-            mensagem_recebida = mensagem_recebida.decode('utf-8', errors='replace')
+            mensagem_decodificada = mensagem_bytes.decode('utf-8', errors='replace')
 
-        print(f"[Receptor] Recebido: {mensagem_recebida}")
+        print(f"[Receptor] Recebido: {mensagem_decodificada}")
 
         resposta_bytes = pickle.dumps({
-            "mensagem": mensagem_recebida,
+            "mensagem": mensagem_decodificada,
             "etapas_tx": pacotao.get("etapas_tx", {}),
             "etapas_rx": rx.etapas_rx
         })
+        
         conn.sendall(resposta_bytes)
         conn.close()
-        
+    
     server.close()
 
+
+# Alias para manter compatibilidade
+receber_via_Socket = receber_via_socket
