@@ -602,7 +602,7 @@ def decode_ASK(signal, freq=5, sample_rate=100):
 
 
 #receiveis a signal sequence that corresponds to one symbol. to online decifration
-def decode_FSK(A,f1,f2,signal):
+def decode_FSK(signal, A = 1,f1 = 5 ,f2=10):
     samples_per_bit = 100
     signal1 = np.zeros(samples_per_bit)
     signal2 = np.zeros(samples_per_bit)
@@ -623,7 +623,7 @@ def decode_FSK(A,f1,f2,signal):
         
     return bit 
         
-def PSK_demodulation(A,f,signal):
+def PSK_demodulation(signal, f=5):
     sig_size = len(signal)
     
     t = np.arange(sig_size)/sig_size
@@ -639,7 +639,7 @@ def PSK_demodulation(A,f,signal):
     return bit
 
     
-def QPSK_demodulation(rx_signal, f, samples_per_symbol=100):
+def QPSK_demodulation(rx_signal, f=5.0, samples_per_symbol=100):
     """
     QPSK demodulator (coherent correlator):
       - rx_signal: received samples (numpy array)
@@ -690,7 +690,7 @@ def QPSK_demodulation(rx_signal, f, samples_per_symbol=100):
 
     return bits_out
 
-def decode_8QAM(signal, f):
+def decode_8QAM(signal, f = 5.0):
 
     num_symbols = len(signal)//100
     bit_stream = []
