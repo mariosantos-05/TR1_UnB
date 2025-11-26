@@ -138,10 +138,6 @@ def adicionar_paridade_par(bits_dados: str) -> str:
     [DADOS] + [BIT_PARIDADE]
     """
 
-    if len(bits_dados) % 8 != 0:
-        padding = 8 - (len(bits_dados) % 8)
-        bits_dados = '0' * padding + bits_dados
-
     print(f"[TX-Detecção] Paridade Par: Aplicando...")
     paridade = 0
     for bit in bits_dados:
