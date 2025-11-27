@@ -21,7 +21,7 @@ def NRZ_polar_demodulation(signal):
     """
     bits = []
     for level in signal:
-        if level > 0:
+        if level > 0.5:
             bits.append('1')
         else:
             bits.append('0')
