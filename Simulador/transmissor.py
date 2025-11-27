@@ -141,19 +141,24 @@ class Transmissor:
     def _aplicar_modulacao_portadora(self, dados: List[float]) -> List[float]:
         if self.mod_portadora == "ASK":
             debug("Modulação portadora ASK realizada")
-            return ASK_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
+            resultado = ASK_modulation(dados) 
+            return resultado + np.random.normal(loc=0, scale=1, size=len(resultado))
         elif self.mod_portadora == "FSK":
             debug("Modulação portadora FSK realizada")
-            return FSK_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
+            resultado = FSK_modulation(dados)
+            return resultado + np.random.normal(loc=0, scale=1, size=len(resultado))
         elif self.mod_portadora == "PSK":
             debug("Modulação portadora PSK realizada")
-            return PSK_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
+            resultado = PSK_modulation(dados)
+            return resultado + np.random.normal(loc=0, scale=1, size=len(resultado))
         elif self.mod_portadora == "QPSK":
             debug("Modulação portadora QPSK realizada")
-            return QPSK_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
+            resultado = QPSK_modulation(dados)
+            return resultado + np.random.normal(loc=0, scale=1, size=len(resultado))
         elif self.mod_portadora == "16QAM":
             debug("Modulação portadora 16QAM realizada")
-            return QAM16_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
+            resultado = QAM16_modulation(dados)
+            return resultado + np.random.normal(loc=0, scale=1, size=len(resultado))
 
         return dados
 
