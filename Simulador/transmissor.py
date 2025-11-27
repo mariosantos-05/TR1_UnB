@@ -2,6 +2,7 @@ from typing import List
 import random
 import pickle
 import socket
+import numpy as np
 
 from CamadaFisica.fisica_transmissor import (
     NRZ_polar_modulation, bipolar_modulation, manchester_modulation,
@@ -140,19 +141,19 @@ class Transmissor:
     def _aplicar_modulacao_portadora(self, dados: List[float]) -> List[float]:
         if self.mod_portadora == "ASK":
             debug("Modulação portadora ASK realizada")
-            return ASK_modulation(dados)
+            return ASK_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
         elif self.mod_portadora == "FSK":
             debug("Modulação portadora FSK realizada")
-            return FSK_modulation(dados)
+            return FSK_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
         elif self.mod_portadora == "PSK":
             debug("Modulação portadora PSK realizada")
-            return PSK_modulation(dados)
+            return PSK_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
         elif self.mod_portadora == "QPSK":
             debug("Modulação portadora QPSK realizada")
-            return QPSK_modulation(dados)
+            return QPSK_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
         elif self.mod_portadora == "16QAM":
             debug("Modulação portadora 16QAM realizada")
-            return QAM16_modulation(dados)
+            return QAM16_modulation(dados) + np.random.normal(loc=1, scale=0.5, size=100)
 
         return dados
 
