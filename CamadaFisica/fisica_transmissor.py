@@ -66,7 +66,7 @@ def ASK_modulation(bits: list[float], freq=5, sample_rate=100):
     return np.array(signal)
                 
 
-def FSK_modulation(bits: list[int], f1=5, f2=10, sample_rate=100):
+def FSK_modulation(bits: list[int], f1=10, f2=5, sample_rate=100):
     t = np.linspace(0, 1, sample_rate, endpoint=False)
     signal = []
 

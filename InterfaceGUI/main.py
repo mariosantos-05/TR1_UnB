@@ -295,26 +295,28 @@ class NetworkGUI(Gtk.Window):
         else:
             banda = np.array([])
 
+        # converter bits "0101..." para lista de ints [0,1,0,1]
+        bits_lista = [int(b) for b in mensagem_bits]
+
         # --- CARRIER MODULATION ---
         if mod_portadora == "ASK":
-            portadora = ASK_modulation(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+            portadora = ASK_modulation(bits_lista)
 
         elif mod_portadora == "FSK":
-            portadora = FSK_modulation(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+            portadora = FSK_modulation(bits_lista)
 
         elif mod_portadora == "PSK":
-            portadora = PSK_modulation(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+            portadora = PSK_modulation(bits_lista)
 
         elif mod_portadora == "QPSK":
-            portadora = QPSK_modulation(banda.tolist() if isinstance(banda, np.ndarray) else banda)
+            portadora = QPSK_modulation(bits_lista)
 
         elif mod_portadora == "16QAM":
-            portadora = QAM16_modulation(
-                banda.tolist() if isinstance(banda, np.ndarray) else banda
-            )
+            portadora = QAM16_modulation(bits_lista)
 
         else:
             portadora = None
+
 
 
 
@@ -325,13 +327,41 @@ class NetworkGUI(Gtk.Window):
         ax1.plot(banda, color="#2d8bff")
         ax1.grid(True)
 
+        # --- DRAW ---
+        self.figure.clf()
+
+        # --- DIGITAL MODULATION PLOT ---
+        ax1 = self.figure.add_subplot(211)
+        ax1.set_title(f"Modulação Digital - {mod_digital}", color="white")
+        ax1.plot(banda, color="#2d8bff")
+        ax1.grid(True)
+
+        # --- CARRIER MODULATION PLOT ---
         if portadora is not None:
             ax2 = self.figure.add_subplot(212)
             ax2.set_title(f"Modulação por Portadora - {mod_portadora}", color="white")
-            ax2.plot(portadora, color="#ff6666")
+
+            # número total de bits
+            num_bits = len(mensagem_bits)
+
+            # samples/bit da portadora (funciona para ASK, FSK, PSK, QAM...)
+            samples_carrier = len(portadora) // num_bits
+
+            # quantos bits mostrar no gráfico (pode aumentar se quiser)
+            bits_preview = len(mensagem_bits)
+
+            total_samples = bits_preview * samples_carrier
+            total_samples = min(total_samples, len(portadora))
+
+            # eixo de tempo proporcional
+            t = np.linspace(0, bits_preview, total_samples)
+
+            # plot do trecho da portadora
+            ax2.plot(t, portadora[:total_samples], color="#ff6666")
             ax2.grid(True)
 
         self.canvas.draw()
+
 
         # --- SEND THREAD ---
         def tarefa():

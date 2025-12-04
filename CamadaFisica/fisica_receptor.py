@@ -89,7 +89,7 @@ def ASK_demodulation(signal, freq=5, sample_rate=100):
 
 
 #receiveis a signal sequence that corresponds to one symbol. to online decifration
-def FSK_demodulation(signal, f1=5, f2=10, sample_rate=100):
+def FSK_demodulation(signal, f1=10, f2=5, sample_rate=100):
     """
     Demodula um sinal FSK e retorna os bits detectados (0 ou 1).
     """
